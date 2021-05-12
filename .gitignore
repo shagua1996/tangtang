@@ -1,5 +1,7 @@
 .DS_Store
-dist/*
+dist/
+dist/electron/*
+dist/web/*
 build/*
 !build/icons
 coverage
