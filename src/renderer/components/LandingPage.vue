@@ -16,13 +16,13 @@
           el-form-item(label="型号:")
             //- el-input.middle(size="mini" type="text" v-model="holeData.type")
             el-select.small(v-model="holeData.type", filterable, size="mini")
-              el-option(v-for="item in typeOptions", :key="item.value", :label="item.label", :value="item.value")
+              el-option(v-for="item in baseForm.typeOptions", :key="item.value", :label="item.label", :value="item.value")
           el-form-item(label="颜色:")
             el-select.small(v-model="holeData.color", filterable, size="mini")
-              el-option(v-for="item in colorOptions", :key="item.value", :label="item.label", :value="item.value")
+              el-option(v-for="item in baseForm.colorOptions", :key="item.value", :label="item.label", :value="item.value")
           el-form-item(label="材质:")
             el-select.small(size="mini", v-model="holeData.textrues", filterable)
-              el-option(v-for="item in textrueses", :key="item.value", :label="item.label", :value="item.value")
+              el-option(v-for="item in baseForm.texturesOptions", :key="item.value", :label="item.label", :value="item.value")
           <br/>
           el-form-item(label="数量:")
             el-input.middle(size="mini" type="number" v-model="holeData.number")
@@ -69,13 +69,15 @@
             template(slot-scope="scope") {{ scope.row.color }}
           el-table-column(label="材质")
             template(slot-scope="scope") {{ scope.row.textrues }}
+          el-table-column(label="单位")
+            template(slot-scope="scope") {{ scope.row.unit }}
           el-table-column(label="数量")
             template(slot-scope="scope") {{ scope.row.number }}
           el-table-column(label="单价")
             template(slot-scope="scope") {{ scope.row.price }}
           el-table-column(label="备注")
             template(slot-scope="scope") {{ scope.row.sizeNote }}
-          el-table-column(label="操作", width="120")
+          el-table-column(label="操作", width="100")
             template(slot-scope="scope")
               el-button(@click.native.prevent="deleteRow(scope.$index, getResultArr)", type="text", size="small") 移除
     </main>
@@ -109,8 +111,7 @@
   import Bus from '@/lib/bus'
   import _ from 'lodash'
   import Vue from 'vue'
-  import { BaseData } from '@/config/base-info'
-  import { defaultSetting } from '@/lib/settings'
+  import { defaultSetting } from '@/config/base-info'
   export default {
     name: 'landing-page',
     data () {
@@ -129,7 +130,7 @@
           price: 0,
           sizeNote: ''
         },
-        baseForm: BaseData,
+        baseForm: defaultSetting,
         tData: {
           doorSize: '',
           woodSize: {},
@@ -148,10 +149,15 @@
         submitData: {},
         getResultArr: [],
         orderDlgVisible: false,
-        typeOptions: defaultSetting.typeOptions,
-        colorOptions: defaultSetting.colorOptions,
-        textrueses: defaultSetting.textrueses,
-        units: defaultSetting.units
+        units: [
+          {
+            label: '套',
+            value: '套'
+          }, {
+            label: '米',
+            value: '米'
+          }
+        ]
       }
     },
     methods: {
@@ -167,14 +173,23 @@
           this.orderForm.no = no
         }
       },
+      async initForm () {
+        let setting = await NEDB.getSetting()
+        console.log('setting', setting)
+        if (setting.length > 0) {
+          this.baseForm = setting[0]
+        }
+      },
       async submit () {
         /* 根据洞口尺寸计算其他尺寸 */
-        let doorWidthSize = this.holeData.holeWidth - this.baseForm.doorWidthDiff
-        let doorHeightSize = this.holeData.holeHeight - this.baseForm.doorHeightDiff
-        let cHengfang = doorWidthSize - parseFloat(this.baseForm.woodWidthDiff)
-        let cShufang = doorHeightSize - parseFloat(this.baseForm.woodHeightDiff)
-        let coverWidthOne = parseFloat(this.holeData.doorWidth) + parseFloat(this.baseForm.doorCoverAdd)
-        let coverWidthTwo = parseFloat(this.holeData.wallWidth) + parseFloat(this.baseForm.wallAdd) - coverWidthOne
+        let baseData = this.baseForm.baseForm
+        console.log()
+        let doorWidthSize = this.holeData.holeWidth - baseData.doorWidthDiff
+        let doorHeightSize = this.holeData.holeHeight - baseData.doorHeightDiff
+        let cHengfang = doorWidthSize - parseFloat(baseData.woodWidthDiff)
+        let cShufang = doorHeightSize - parseFloat(baseData.woodHeightDiff)
+        let coverWidthOne = parseFloat(this.holeData.doorWidth) + parseFloat(baseData.doorCoverAdd)
+        let coverWidthTwo = parseFloat(this.holeData.wallWidth) + parseFloat(baseData.wallAdd) - coverWidthOne
         this.tData.createDate = Date.now()
         this.tData.holeSize = this.holeData.holeWidth + '*' + this.holeData.holeHeight + '*' + this.holeData.wallWidth
         this.tData.doorSize = doorWidthSize + '*' + doorHeightSize
@@ -214,7 +229,8 @@
         Bus.$emit('showOrder')
       }
     },
-    mounted () {
+    activated () {
+      this.initForm()
     },
     watch: {
       orderDlgVisible (val) {
@@ -237,7 +253,7 @@
     position: relative;
   }
   .result-box {
-    max-width: 1200px;
+    max-width: 1280px;
     height: 450px;
     padding: 20px;
     border: 1px solid rgb(224, 221, 221);

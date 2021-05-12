@@ -5,7 +5,8 @@ import path from 'path'
 // import fs from 'fs'
 let DB = {
   case: null,
-  order: null
+  order: null,
+  setting: null
 }
 let getAppDir = () => {
   return new Promise((resolve, reject) => {
@@ -24,12 +25,12 @@ let loadDataBase = async (name, savePath, uniqueField) => {
 getAppDir().then(async (appPath) => {
   await loadDataBase('case', appPath)
   await loadDataBase('order', appPath, 'orderId')
+  await loadDataBase('setting', appPath, 'version')
 })
 export default {
   addCase: (params) => {
     return new Promise((resolve, reject) => {
       DB.case.insert(params, function (err, newCase) {
-        console.log('dbdb', err, newCase)
         if (!err) {
           resolve(newCase)
         } else {
@@ -125,6 +126,41 @@ export default {
           resolve(numRemoved)
         } else {
           Message.error('删除订单失败', err)
+        }
+      })
+    })
+  },
+  addSetting: (params) => {
+    return new Promise((resolve, reject) => {
+      DB.setting.insert(params, function (err, newSetting) {
+        console.log('addsetting', newSetting)
+        if (!err) {
+          resolve(newSetting)
+        } else {
+          Message.error('保存设置失败')
+        }
+      })
+    })
+  },
+  updateSetting: (params) => {
+    return new Promise((resolve, reject) => {
+      DB.setting.update({ version: params.version }, { $set: params }, {}, (err, numReplaced) => {
+        if (!err) {
+          resolve(numReplaced)
+        } else {
+          Message.error('更新设置失败')
+        }
+      })
+    })
+  },
+  getSetting: () => {
+    return new Promise((resolve, reject) => {
+      if (!DB.setting) return
+      DB.setting.find({}).exec(function (err, settings) {
+        if (!err) {
+          resolve(settings)
+        } else {
+          Message.error('获取设置信息失败')
         }
       })
     })
