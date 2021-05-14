@@ -125,7 +125,8 @@
       },
       // 保存
       async saveSettings () {
-        if (!this.isSetting.baseForm) {
+        console.log('11', this.isSetting, this.defaultSet)
+        if (!this.isSetting[0].baseForm) {
           await NEDB.addSetting(this.defaultSet)
           this.initData()
         } else {

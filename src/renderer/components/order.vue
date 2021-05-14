@@ -1,11 +1,9 @@
 <template lang="pug">
   <div id="order">
     el-tabs.content-width(v-model="activeName")
-      el-tab-pane(label="生产单", name="first")
-        product-order(:productData="newOrder")
-      el-tab-pane(label="销售单", name="second")
+      el-tab-pane(label="销售单", name="first")
         .outer-box
-          .action
+          .actions
           .sell-title
               span 订单编号：{{ newOrder.orderForm.no }}
               span 日期: {{ newOrder.createAt | date('YYYY-MM-DD') }}
@@ -80,6 +78,8 @@
                     input(v-model="receiveName", size="mini", id="recieve")
         .footer.f-tar.f-p-t-10
           el-button(type="primary", @click="saveForm") 确认并保存
+      el-tab-pane(label="生产单", name="second")
+          product-order(:productData="newOrder")
   </div>
 </template>
 
@@ -115,7 +115,6 @@
       initData () {
         this.newOrder = window.appData.currentOrderData
         this.totalPrice = _.sumBy(this.newOrder.sizeList, 'singlePrice')
-        this.saveForm()
         console.log('this.newOrderData::', this.newOrder)
       },
       async saveForm () {
@@ -127,8 +126,8 @@
           contactName: this.contactName,
           receiveName: this.receiveName
         }
-        this.newOrder.detailForm = params
-        await NEDB.updateOrder(this.newOrder)
+        // this.newOrder.detailForm = params
+        await NEDB.updateOrder({ orderId: this.newOrder.orderId, detailForm: params })
       }
     },
     mounted () {

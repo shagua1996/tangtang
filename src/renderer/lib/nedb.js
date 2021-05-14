@@ -110,9 +110,9 @@ export default {
   updateOrder: (params) => {
     return new Promise((resolve, reject) => {
       DB.order.update({ orderId: params.orderId }, { $set: params }, {}, (err, numReplaced) => {
-        console.log('update:', params, numReplaced)
-        if (!err) {
+        if (!err && numReplaced > 0) {
           resolve(numReplaced)
+          Message.success('保存成功')
         } else {
           Message.error('更新订单失败', err)
         }

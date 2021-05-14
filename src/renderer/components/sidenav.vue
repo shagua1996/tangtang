@@ -1,7 +1,7 @@
 <template lang="pug">
   <div id="sidenav">
     .menu 
-      el-menu(default-active="/", @select="handleSelect")
+      el-menu(:default-active="$route.path", @select="handleSelect")
         el-menu-item(index='/') 计算
         el-menu-item(index='/order', v-if="showOrderPage") 当前订单
         el-menu-item(index='/history') 历史记录
@@ -15,7 +15,8 @@
     name: 'sidenav',
     data () {
       return {
-        showOrderPage: false
+        showOrderPage: false,
+        nacActive: '/'
       }
     },
     methods: {

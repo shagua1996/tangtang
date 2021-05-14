@@ -5,7 +5,7 @@
         el-button(size="mini", type="primary", @click="removeOrder") 删除
     .outer-box
       .sell-title
-        span 订单编号：{{ saleData.orderForm.no }}
+        span 订单编号：{{ saleData.orderId }}
         span 日期: {{ saleData.createAt | date('YYYY-MM-DD') }}
       table.production-table.f-m-t-10
         thead
@@ -48,16 +48,17 @@
             td
           tr 
             td(colspan="11") 备注：{{ saleData.orderForm.orderNote }}
-          tr
-            td(colspan="5") 应付金额：
-            td(colspan="6") 实付金额：{{ saleData.detailForm.amountPay }}
-          tr
-            td(colspan="3") 销售单位：{{ saleData.detailForm.saleCompany }}
-            td(colspan="4") 地址：{{ saleData.detailForm.companyAdress }}
-            td(colspan="2") 联系人：{{ saleData.detailForm.contactName }}
-            td(colspan="2") 电话：{{ saleData.detailForm.contact }}
-          tr
-            td(colspan="11") 收货人：{{ saleData.detailForm.receiveName }}
+          template(v-if="saleData.detailForm")
+            tr
+              td(colspan="5") 应付金额：
+              td(colspan="6") 实付金额：{{ saleData.detailForm.amountPay }}
+            tr
+              td(colspan="3") 销售单位：{{ saleData.detailForm.saleCompany }}
+              td(colspan="4") 地址：{{ saleData.detailForm.companyAdress }}
+              td(colspan="2") 联系人：{{ saleData.detailForm.contactName }}
+              td(colspan="2") 电话：{{ saleData.detailForm.contact }}
+            tr
+              td(colspan="11") 收货人：{{ saleData.detailForm.receiveName }}
 </template>
 
 <script>

@@ -3,7 +3,7 @@
     .action
     .outer-box
       .sell-title
-        span 订单编号：{{ productData.orderForm.no }}
+        span 订单编号：{{ productData.orderId }}
         span 日期: {{ productData.createAt | date('YYYY-MM-DD') }}
       table.production-table.f-m-t-10
         thead
