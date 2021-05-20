@@ -103,7 +103,7 @@
           value: this.addType,
           label: this.addType
         }
-        this.defaultSet.typeOptions.push(params)
+        this.defaultSet.typeOptions.unshift(params)
       },
       submitTextrues () {
         if (!this.addTextures) return
@@ -112,7 +112,7 @@
           value: this.addTextures,
           label: this.addTextures
         }
-        this.defaultSet.texturesOptions.push(params)
+        this.defaultSet.texturesOptions.unshift(params)
       },
       submitColor () {
         if (!this.addColor) return
@@ -121,12 +121,12 @@
           value: this.addColor,
           label: this.addColor
         }
-        this.defaultSet.colorOptions.push(params)
+        this.defaultSet.colorOptions.unshift(params)
       },
       // 保存
       async saveSettings () {
         console.log('11', this.isSetting, this.defaultSet)
-        if (!this.isSetting[0].baseForm) {
+        if (!this.isSetting[0]) {
           await NEDB.addSetting(this.defaultSet)
           this.initData()
         } else {

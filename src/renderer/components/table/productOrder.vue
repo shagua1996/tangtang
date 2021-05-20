@@ -1,8 +1,8 @@
 <template lang="pug">
   <div id="product">
-    .action
-    .outer-box
-      .sell-title
+    .outer-box#productOrder
+      .name.f-p-5.f-tac.f-fs-16 唐唐木门生产单
+      .sell-title.f-m-t-20
         span 订单编号：{{ productData.orderId }}
         span 日期: {{ productData.createAt | date('YYYY-MM-DD') }}
       table.production-table.f-m-t-10
@@ -42,7 +42,10 @@
             td 
               span {{ item.coverSize && item.coverSize.heightOne }} <br/>
               span {{ item.coverSize && item.coverSize.heightTwo }}
-            td 
+            td(width="100px")
+              span {{ item.sizeNote }}
+    .footer.f-tar.f-p-t-10
+      el-button.f-m-r-10(type="primary", v-print="printObj") 打印
   </div>
 </template>
 
@@ -54,29 +57,22 @@
     },
     data () {
       return {
+        printObj: {
+          id: 'productOrder'
+        }
       }
     },
     methods: {
     },
     mounted () {
     }
-    // watch: {
-    //   tableData: {
-    //     handler: 'setTableData',
-    //     immediate: true,
-    //     deep: true
-    //   }
-    // }
   }
 </script>
 
 <style scoped lang="scss">
-  .action {
-    height: 40px;
-  }
   .outer-box {
-    padding: 20px;
-    border: 1px solid rgb(224, 221, 221);
+    padding: 20px 0;
+    min-width: 800px;
     max-width: 1200px;
     .sell-title {
       display: flex;
@@ -85,8 +81,9 @@
   }
   table {
     border-collapse: collapse;
+    width: 100%;
   }
-  table, tr, th, td {
+  tr, th, td {
     text-align: left;
     padding: 10px;
     border: solid 1px rgb(224, 221, 221);

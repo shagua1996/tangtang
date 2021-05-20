@@ -2,7 +2,7 @@
   "name": "TangTang",
   "version": "0.0.1",
   "author": "dsr",
-  "description": "An electron-vue project",
+  "description": "An size calc project",
   "license": null,
   "main": "./dist/electron/main.js",
   "scripts": {
@@ -63,6 +63,7 @@
     "nedb": "^1.8.0",
     "vue": "^2.5.16",
     "vue-electron": "^1.0.6",
+    "vue-print-nb": "^1.7.3",
     "vue-router": "^3.0.1",
     "vuex": "^3.0.1",
     "vuex-electron": "^1.0.0"

@@ -2,9 +2,11 @@
   #sale
     .action
       .delete(v-if="$route.name === 'history'")
+        el-button(size="mini", type="primary", v-print="printObj") 打印
         el-button(size="mini", type="primary", @click="removeOrder") 删除
-    .outer-box
-      .sell-title
+    .outer-box#hisSaleOrder
+      .name.f-p-5.f-tac.f-fs-16 唐唐木门销售单
+      .sell-title.f-m-t-20
         span 订单编号：{{ saleData.orderId }}
         span 日期: {{ saleData.createAt | date('YYYY-MM-DD') }}
       table.production-table.f-m-t-10
@@ -12,11 +14,11 @@
           tr
             th(colspan="3") 经销商名称: {{ saleData.orderForm.dealerName }}
             th(colspan="5") 地址: {{ saleData.orderForm.dealerAddress }}
-            th(colspan="3") 电话: {{ saleData.orderForm.call }}
+            th(colspan="2") 电话: {{ saleData.orderForm.call }}
           tr
             th(colspan="3") 客户名称：{{ saleData.orderForm.clientName }}
             th(colspan="5") 地址：{{ saleData.orderForm.clientAddress }}
-            th(colspan="3") 交货日期：{{ saleData.orderForm.deliveryDate | date }}
+            th(colspan="2") 交货日期：{{ saleData.orderForm.deliveryDate | date }}
           tr
             th 序号
             th 型号
@@ -28,7 +30,6 @@
             th 单位
             th 单价
             th 金额
-            th 备注
         tbody
           tr(v-for="item, index in saleData.sizeList")
             td {{ index + 1 }}
@@ -39,30 +40,27 @@
             td {{ item.textrues }}
             td {{ item.number }}
             td {{ item.unit }}
-            td {{ item.price }}
-            td {{ item.singlePrice }}
-            td {{ item.sizeNote }}
+            td ￥ {{ item.price }}
+            td ￥ {{ item.singlePrice }}
           tr
             td(colspan="8")
-            td(colspan="2") 合计金额：￥ {{ totalPrice }}
-            td
+            td.f-fwb(colspan="2") 合计金额：￥ {{ saleData.totalPrice | formatMoney }}
           tr 
-            td(colspan="11") 备注：{{ saleData.orderForm.orderNote }}
+            td(colspan="10") 备注：{{ saleData.orderForm.orderNote }}
           template(v-if="saleData.detailForm")
             tr
-              td(colspan="5") 应付金额：
-              td(colspan="6") 实付金额：{{ saleData.detailForm.amountPay }}
+              td(colspan="5") 应付金额：{{ saleData.detailForm.yingPay }}
+              td(colspan="5") 实付金额：{{ saleData.detailForm.amountPay }}
             tr
               td(colspan="3") 销售单位：{{ saleData.detailForm.saleCompany }}
               td(colspan="4") 地址：{{ saleData.detailForm.companyAdress }}
-              td(colspan="2") 联系人：{{ saleData.detailForm.contactName }}
+              td(colspan="1") 联系人：{{ saleData.detailForm.contactName }}
               td(colspan="2") 电话：{{ saleData.detailForm.contact }}
             tr
-              td(colspan="11") 收货人：{{ saleData.detailForm.receiveName }}
+              td(colspan="10") 收货人：{{ saleData.detailForm.receiveName }}
 </template>
 
 <script>
-  import _ from 'lodash'
   import NEDB from '@/lib/nedb'
   export default {
     name: 'sale-order',
@@ -71,13 +69,12 @@
     },
     data () {
       return {
-        totalPrice: 0
+        printObj: {
+          id: 'hisSaleOrder'
+        }
       }
     },
     methods: {
-      initData () {
-        this.totalPrice = _.sumBy(this.saleData.sizeList, 'singlePrice')
-      },
       removeOrder () {
         this.$confirm('对应的生产单将一起删除，删除数据无法回复，确认删除？', '提示', {
           confirmButtonText: '确定',
@@ -90,16 +87,6 @@
         }).catch(() => {
           console.log('')
         })
-      }
-    },
-    mounted () {
-      this.initData()
-    },
-    watch: {
-      saleData: {
-        handler: 'initData',
-        immediate: true,
-        deep: true
       }
     }
   }
@@ -116,8 +103,8 @@
     }
   }
   .outer-box {
-    padding: 20px;
-    border: 1px solid rgb(224, 221, 221);
+    padding: 20px 0;
+    min-width: 1000px;
     max-width: 1200px;
     .sell-title {
       display: flex;
@@ -125,12 +112,12 @@
     }
   }
   table {
+    width: 100%;
     border-collapse: collapse;
   }
-  table, tr, th, td {
+  tr, th, td {
     text-align: left;
     padding: 10px;
-    border: solid 1px rgb(224, 221, 221);
     .label {
       width: 50px;
     }

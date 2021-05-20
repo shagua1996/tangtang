@@ -33,7 +33,7 @@
             el-input.middle(size="mini" type="number" v-model="holeData.price")
           <br/>
           el-form-item(label="备注:", prop="sizeNote")
-            el-input(type="textarea", autosize, v-model="holeData.sizeNote")
+            el-input.textarea(type="textarea", maxlength="30", show-word-limit, v-model="holeData.sizeNote")
           <br/>
           el-form-item.button-right
             el-button(type="primary" @click="resetForm('holeData')") 重置
@@ -52,7 +52,7 @@
         .title.f-fwb.f-fs-16 计算结果
         .button
           el-button(type="primary", size="mini", @click="showOrderDlg") 生成生产单和销售单
-      el-table.f-m-t-20(:data="getResultArr", height="400", :border="false")
+      el-table.f-m-t-20(:data="getResultArr", height="500", :border="false")
         el-table-column(label="洞口尺寸")
           el-table-column(label="宽*高*墙厚", width="135")
             template(slot-scope="scope") {{ scope.row.holeSize }}
@@ -250,10 +250,12 @@
       async handleSubmit () {
         // 提交订单数据
         const sizeList = _.cloneDeep(this.getResultArr)
+        let sum = _.sumBy(sizeList, 'singlePrice')
         this.submitData.sizeList = sizeList
         this.submitData.createAt = Date.now()
         this.submitData.orderId = this.orderForm.no
         this.submitData.orderForm = this.orderForm
+        this.submitData.totalPrice = sum
         window.appData.currentOrderData = this.submitData
         console.log('submitdata::', this.submitData)
         await NEDB.addOrder(this.submitData)
@@ -279,7 +281,7 @@
   .calc-box {
     margin-bottom: 10px;
     width: 60%;
-    height: 300px;
+    height: 320px;
     padding: 20px;
     border: 1px solid rgb(224, 221, 221);
     border-radius: 10px;
@@ -287,8 +289,7 @@
   }
   .result-box {
     max-width: 1280px;
-    height: 450px;
-    padding: 20px;
+    padding: 10px;
     border: 1px solid rgb(224, 221, 221);
     border-radius: 10px;
     .header {
@@ -309,6 +310,9 @@
   .el-form-item {
     .middle, .small {
       width: 100px;
+    }
+    .textarea {
+      width: 300px;
     }
   }
   .button-right {

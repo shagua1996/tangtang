@@ -22,7 +22,7 @@ function createWindow () {
    * Initial window options
    */
   mainWindow = new BrowserWindow({
-    title: '淼淼专用尺寸计算',
+    title: '唐唐木门尺寸计算',
     height: 863,
     width: 1680,
     minWidth: 900,
