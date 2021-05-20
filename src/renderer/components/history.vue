@@ -89,7 +89,7 @@
         }
         let searchText = this.searchText.toUpperCase()
         this.orderArr = _.filter(this.orderHistory, (item) => {
-          let finValue = _(item).values().filter(value => value.toString().toUpperCase().indexOf(searchText) > -1).value().length
+          let finValue = _(item.orderForm).values().filter(value => value.toString().toUpperCase().indexOf(searchText) > -1).value().length
           return finValue
         })
       }
