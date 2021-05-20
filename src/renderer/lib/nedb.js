@@ -16,7 +16,7 @@ let getAppDir = () => {
   })
 }
 let loadDataBase = async (name, savePath, uniqueField) => {
-  DB[name] = new Datastore({ filename: path.join(savePath, `/Tang/${name}.db`) })
+  DB[name] = new Datastore({ filename: path.resolve(savePath, `../../Tang/${name}.db`) })
   await DB[name].loadDatabase()
   if (uniqueField) {
     DB[name].ensureIndex({ fieldName: uniqueField, unique: true })

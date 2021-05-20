@@ -24,7 +24,7 @@
             .type.f-m-t-5(v-for="type, index in defaultSet.typeOptions")
               span.f-fs-12 {{ type.value }}
               span.f-csp.s-fc-link.f-fs-12(@click="removeType(index)") 移除
-        .add.f-m-l-20
+        .add.f-m-l-20(@keyup.enter="submitType")
           .label.f-m-b-10 添加型号：
           .input.f-dflex
             el-input(size="mini", v-model.trim="addType")
@@ -36,7 +36,7 @@
             .type.f-m-t-5(v-for="type, index in defaultSet.colorOptions")
               span.f-fs-12 {{ type.value }}
               span.f-csp.s-fc-link.f-fs-12(@click="removeColor(index)") 移除
-        .add.f-m-l-20
+        .add.f-m-l-20(@keyup.enter="submitColor")
           .label.f-m-b-10 添加颜色：
           .input.f-dflex
             el-input(size="mini", v-model.trim="addColor")
@@ -48,7 +48,7 @@
             .type.f-m-t-5(v-for="type, index in defaultSet.texturesOptions")
               span.f-fs-12 {{ type.value }}
               span.f-csp.s-fc-link.f-fs-12(@click="removeTextrue(index)") 移除
-        .add.f-m-l-20
+        .add.f-m-l-20(@keyup.enter="submitTextrues")
           .label.f-m-b-10 添加材质：
           .input.f-dflex
             el-input(size="mini", v-model.trim="addTextures")
@@ -104,6 +104,7 @@
           label: this.addType
         }
         this.defaultSet.typeOptions.unshift(params)
+        this.saveSettings()
       },
       submitTextrues () {
         if (!this.addTextures) return
@@ -113,6 +114,7 @@
           label: this.addTextures
         }
         this.defaultSet.texturesOptions.unshift(params)
+        this.saveSettings()
       },
       submitColor () {
         if (!this.addColor) return
@@ -122,6 +124,7 @@
           label: this.addColor
         }
         this.defaultSet.colorOptions.unshift(params)
+        this.saveSettings()
       },
       // 保存
       async saveSettings () {
