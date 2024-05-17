@@ -1,7 +1,7 @@
 <template lang="pug">
   <div id="product">
     .outer-box#productOrder
-      .name.f-p-5.f-tac.f-fs-16 唐唐木门生产单
+      .name.f-p-5.f-tac.f-fs-16 芃悦居木门生产单
       .sell-title.f-m-t-20
         span 订单编号：{{ productData.orderId }}
         span 日期: {{ productData.createAt | date('YYYY-MM-DD') }}
@@ -70,22 +70,27 @@
 </script>
 
 <style scoped lang="scss">
-  .outer-box {
-    padding: 20px 0;
-    min-width: 800px;
-    max-width: 1200px;
-    .sell-title {
-      display: flex;
-      justify-content: space-between;
-    }
+.outer-box {
+  padding: 20px 0;
+  min-width: 800px;
+  max-width: 1200px;
+
+  .sell-title {
+    display: flex;
+    justify-content: space-between;
   }
-  table {
-    border-collapse: collapse;
-    width: 100%;
-  }
-  tr, th, td {
-    text-align: left;
-    padding: 10px;
-    border: solid 1px rgb(224, 221, 221);
-  }
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+tr,
+th,
+td {
+  text-align: left;
+  padding: 10px;
+  border: solid 1px rgb(224, 221, 221);
+}
 </style>

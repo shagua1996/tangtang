@@ -50,7 +50,7 @@ a {
 
 .f-dflex{display: flex;}
 .f-flex-auto{flex: auto;}
-.f-flex-center{align-items: center;}
+.f-flex-center{display: flex; justify-content: center;}
 .f-m-0{margin: 0 !important;}
 .f-m-l-0{margin-left: 0 !important;}
 .f-m-r-0{margin-right: 0 !important;}

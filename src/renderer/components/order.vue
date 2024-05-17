@@ -3,10 +3,10 @@
     el-tabs.content-width(v-model="activeName")
       el-tab-pane(label="销售单", name="first")
         .outer-box#saleOrder
-          .name.f-p-5.f-tac.f-fs-16 唐唐木门销售单
+          .name.f-p-5.f-tac.f-fs-16 芃悦居木门销售单
           .sell-title.f-m-t-20
-              span 订单编号：{{ newOrder.orderForm.no }}
-              span 日期: {{ newOrder.createAt | date('YYYY-MM-DD') }}
+            span 订单编号：{{ newOrder.orderForm.no }}
+            span 日期: {{ newOrder.createAt | date('YYYY-MM-DD') }}
           table.production-table.f-m-t-10
             thead
               tr
@@ -95,7 +95,7 @@
         totalPrice: 0,
         amountPay: '',
         yingPay: '',
-        saleCompany: '恩施唐唐门窗有限公司',
+        saleCompany: '浙江永康芃悦居木门有限公司',
         companyAdress: '恩施市阳雀坝',
         contact: '13310559908',
         contactName: '丁先生',
@@ -141,37 +141,46 @@
 </script>
 
 <style scoped lang="scss">
-  .outer-box {
-    padding: 20px 0;
-    // border: 1px solid rgb(224, 221, 221);
-    min-width: 1000px;
-    max-width: 1200px;
-    .sell-title {
-      display: flex;
-      justify-content: space-between;
+.outer-box {
+  padding: 20px 0;
+  // border: 1px solid rgb(224, 221, 221);
+  min-width: 1000px;
+  max-width: 1200px;
+
+  .sell-title {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .editInput {
+    .middle {
+      width: 80px;
     }
-    .editInput {
-      .middle {
-        width: 80px;
-      }
-      input {
-        border: none;
-      }
-      .small {
-        width: 60px;
-      }
-      .big {
-        width: 260px;
-      }
+
+    input {
+      border: none;
+    }
+
+    .small {
+      width: 60px;
+    }
+
+    .big {
+      width: 260px;
     }
   }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-  tr, th, td {
-    text-align: left;
-    padding: 10px;
-    border: solid 1px rgb(224, 221, 221);
-  }
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+tr,
+th,
+td {
+  text-align: left;
+  padding: 10px;
+  border: solid 1px rgb(224, 221, 221);
+}
 </style>

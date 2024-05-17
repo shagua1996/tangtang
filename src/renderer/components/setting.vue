@@ -1,7 +1,7 @@
 <template lang="pug">
   #setting
     .f-m-t-10.f-fs-16.f-fwb 设置
-    el-form.f-m-t-20(:inline="true", :model="defaultSet.baseForm")
+    el-form.form-setting.f-m-t-20(:inline="true", :model="defaultSet.baseForm")
       .item-title.f-fs-14.f-fwb 尺寸计算
       el-form-item(label="门板宽差量:")
         el-input.small(size="mini" type="number" v-model="defaultSet.baseForm.doorWidthDiff")
@@ -53,9 +53,9 @@
           .input.f-dflex
             el-input(size="mini", v-model.trim="addTextures")
             el-button.f-m-l-5(size="mini", type="primary", @click="submitTextrues") 添加
-    .footer.f-tar
+    .footer.f-flex-center
       el-button(type="primary", @click="saveSettings") 保存设置
-  </template> 
+  </template>
 
 <script>
   import { defaultSetting } from '@/config/base-info'
@@ -145,35 +145,45 @@
 </script>
 
 <style scoped lang='scss'>
-  #setting {
-    .setting-items {
-      color: rgb(143, 141, 145);
-    }
+#setting {
+  .setting-items {
+    color: rgb(143, 141, 145);
   }
-  .el-form-item {
-    margin-left: 20px;
-    .middle {
-      width: 100px;
-    }
-    .small {
-      width: 70px;
-    }
-  }
-  .form-item {
-    margin-left: 20px;
-    .all-type {
-      width: 100px;
-      height: 150px;
-      padding: 5px 10px;
-      border: 1px solid #e6e6e6;
-      border-radius: 5px;
-      overflow: auto;
-      .type {
-        width: 100px;
-        display: flex;
-        justify-content: space-between;
-      }
-    }
-  }
-</style>>
+}
 
+.el-form-item {
+  margin-left: 20px;
+
+  .middle {
+    width: 100px;
+  }
+
+  .small {
+    width: 70px;
+  }
+}
+
+.form-setting {
+  height: calc(100vh - 120px);
+  overflow-y: auto;
+}
+
+.form-item {
+  margin-left: 20px;
+
+  .all-type {
+    width: 320px;
+    height: 150px;
+    padding: 5px 10px;
+    border: 1px solid #e6e6e6;
+    border-radius: 5px;
+    overflow: auto;
+
+    .type {
+      width: 280px;
+      display: flex;
+      justify-content: space-between;
+    }
+  }
+}
+</style>

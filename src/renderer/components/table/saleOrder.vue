@@ -5,7 +5,7 @@
         el-button(size="mini", type="primary", v-print="printObj") 打印
         el-button(size="mini", type="primary", @click="removeOrder") 删除
     .outer-box#hisSaleOrder
-      .name.f-p-5.f-tac.f-fs-16 唐唐木门销售单
+      .name.f-p-5.f-tac.f-fs-16 芃悦居木门销售单
       .sell-title.f-m-t-20
         span 订单编号：{{ saleData.orderId }}
         span 日期: {{ saleData.createAt | date('YYYY-MM-DD') }}
@@ -93,36 +93,43 @@
 </script>
 
 <style scoped lang="scss">
-  .action {
-    position: relative;
-    height: 40px;
-    .delete {
-      padding: 10px;
-      position: absolute;
-      right: 10px;
-    }
-  }
-  .outer-box {
-    padding: 20px 0;
-    min-width: 1000px;
-    max-width: 1200px;
-    .sell-title {
-      display: flex;
-      justify-content: space-between;
-    }
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-  tr, th, td {
-    text-align: left;
-    padding: 10px;
-    .label {
-      width: 50px;
-    }
-    .el-input {
+.action {
+  position: relative;
+  height: 40px;
 
-    }
+  .delete {
+    padding: 10px;
+    position: absolute;
+    right: 10px;
   }
+}
+
+.outer-box {
+  padding: 20px 0;
+  min-width: 1000px;
+  max-width: 1200px;
+
+  .sell-title {
+    display: flex;
+    justify-content: space-between;
+  }
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+tr,
+th,
+td {
+  text-align: left;
+  padding: 10px;
+
+  .label {
+    width: 50px;
+  }
+
+  .el-input {}
+}
 </style>

@@ -11,7 +11,9 @@
               .date.f-m-t-10.s-fc-333.f-fwb(v-if="showDate(index)")
                 i.el-icon-date
                 span {{ item.createAt | date('YYYY年MM月DD日') }}
-              .item.f-csp.f-p-5(@click="showProTable(item, index)", :class="{'active' : currentIndex === index}") {{ item.orderId }}-{{ item.orderForm.clientName }}
+              .item.f-csp.f-p-5.f-toe(
+                @click="showProTable(item, index)",
+                :class="{'active' : currentIndex === index}") {{ item.orderId }}-{{ item.orderForm.clientName }}
           .right.f-m-l-10(v-if="orderArr.length > 0")
             el-tabs
               el-tab-pane(label="销售单")
@@ -106,25 +108,30 @@
 </script>
 
 <style scoped lang="scss">
-  .serch-input {
+.serch-input {
+  width: 200px;
+}
+
+.inner-box {
+  max-width: 1280px;
+  min-width: 800px;
+  display: flex;
+
+  .left {
     width: 200px;
-  }
-  .inner-box {
-    max-width: 1280px;
-    min-width: 800px;
-    display: flex;
-    .left {
-      width: 180px;
-      padding: 10px;
-      height: 600px;
-      overflow: auto;
-      .item {
-        margin: 5px 0;
-      }
-      .active {
-        color: white;
-        background-color: #409EFF;
-      }
+    min-width: 180px;
+    padding: 10px;
+    height: 600px;
+    overflow: auto;
+
+    .item {
+      margin: 5px 0;
+    }
+
+    .active {
+      color: white;
+      background-color: #409EFF;
     }
   }
+}
 </style>
