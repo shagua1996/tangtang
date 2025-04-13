@@ -23,8 +23,8 @@
                 .list
                   pro-order(:productData="orderData")
         .empty.f-m-t-20.f-tac(v-else) 暂无数据
-      el-tab-pane(label="尺寸计算记录", name="calc")
-        <table-result :tableData="historyData"></table-result>
+      //- el-tab-pane(label="尺寸计算记录", name="calc")
+      //-   <table-result :tableData="historyData"></table-result>
 </template>
 
 <script>

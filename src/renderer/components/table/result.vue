@@ -7,7 +7,7 @@
           <th rowspan="2">门厚</th>
           <th>门板尺寸</th>
           <th colspan="2">木方尺寸</th>
-          <th colspan="4">门套尺寸</th>
+          <th colspan="4">门框</th>
           <th>备注</th>
           <th>操作</th>
         </tr>
@@ -16,8 +16,8 @@
           <th>宽*高</th>
           <th>横枋</th>
           <th>竖枋</th>
-          <th colspan="2">门开方向（宽*长*数量）</th>
-          <th colspan="2">反方向（宽*长*数量）</th>
+          <th colspan="2">扣板</th>
+          <th colspan="2">铝材</th>
           <th></th>
           <th></th>
         </tr>

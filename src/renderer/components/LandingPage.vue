@@ -1,6 +1,6 @@
 <template lang="pug">
   #main
-    .top.f-dflex
+    .top.f-dflex.overflow-y
       .calc-box
         .title 洞口尺寸(单位：mm(毫米))
         el-form(:inline="true", :model="holeData", :rules="rules", ref="holeData")
@@ -12,7 +12,10 @@
             el-input.middle(size="mini" type="number" v-model="holeData.wallWidth")
           el-form-item(label="门厚:", prop="doorWidth")
             el-input.middle(size="mini" type="number" v-model="holeData.doorWidth")
-          <br/>
+          el-form-item(label="开向:", prop="openDirection")
+            el-select.small(v-model="holeData.openDirection", filterable, size="small")
+              el-option(v-for="item in openDirection" :key="item" :label="item" :value="item")
+          //- <br/>
           el-form-item(label="型号:", prop="type")
             //- el-input.middle(size="mini" type="text" v-model="holeData.type")
             el-select.small(v-model="holeData.type", filterable, size="mini")
@@ -23,6 +26,9 @@
           el-form-item(label="材质:", prop="textrues")
             el-select.small(size="mini", v-model="holeData.textrues", filterable)
               el-option(v-for="item in baseForm.texturesOptions", :key="item.value", :label="item.label", :value="item.value")
+          el-form-item(label="墙体:", prop="wallType")
+            el-select.small(size="mini", v-model="holeData.wallType", filterable, clearable)
+              el-option(v-for="item in wallTypeConfig", :key="item.value", :label="item.label", :value="item.value")
           <br/>
           el-form-item(label="数量:", prop="number")
             el-input.middle(size="mini" type="number" v-model="holeData.number")
@@ -42,11 +48,12 @@
         el-card
           .header(slot="header") 当前计算公式：
           .tip-text.f-fs-12
-            p 门板尺寸： (宽 - {{ baseForm.baseForm.doorWidthDiff }}) * (高 - {{ baseForm.baseForm.doorHeightDiff }})
+            p 门板尺寸： (宽 - {{ doorWidthDiff }}) * (高 - {{ doorHeightDiff }})
             p 横方：(门板宽 - {{ baseForm.baseForm.woodWidthDiff }}) * 4
             p 竖方：(门板高 - {{ baseForm.baseForm.woodHeightDiff }}) * 2
-            p 门开放向：(门厚 + {{ baseForm.baseForm.doorCoverAdd }}) * 高/宽 * 数量
-            p 反放向：(墙厚 + {{ baseForm.baseForm.wallAdd }} - 门开方向厚度) * 高/宽 * 数量
+            p 扣板高：(墙厚 - {{ holeData.doorWidth }}) * (门板高 + {{ baseForm.baseForm.koubanHeight }}) * 2
+            p 扣板宽：(墙厚 - {{ holeData.doorWidth }}) * (门板宽 + {{ baseForm.baseForm.koubanWidth }}) * 1
+            p 铝材：(门板宽 + {{ baseForm.baseForm.lucaiWidth }}) / (门板高 + {{ baseForm.baseForm.lucaiHeight }})
     .result-box
       .header
         .title.f-fwb.f-fs-16 计算结果
@@ -56,6 +63,8 @@
         el-table-column(label="洞口尺寸")
           el-table-column(label="宽*高*墙厚", width="135")
             template(slot-scope="scope") {{ scope.row.holeSize }}
+          el-table-column(label="墙体")
+            template(slot-scope="scope") {{ wallTypeMap[scope.row.wallType] || "" }}
         el-table-column(label="门板尺寸")
           el-table-column(label="宽*高")
             template(slot-scope="scope") {{ scope.row.doorSize }}
@@ -64,15 +73,17 @@
             template(slot-scope="scope") {{ scope.row.woodSize.hengFang }}
           el-table-column(label="竖方")
             template(slot-scope="scope") {{ scope.row.woodSize.shufang }}
-        el-table-column(label="门套尺寸")
-          el-table-column(label="门开方向", width="120")
+        el-table-column(label="门框")
+          el-table-column(label="扣板", width="120")
             template(slot-scope="scope") 
               div {{ scope.row.coverSize.widthOne }}
               div {{ scope.row.coverSize.widthTwo }}
-          el-table-column(label="反方向", width="120")
+          el-table-column(label="铝材", width="120")
             template(slot-scope="scope") 
               div {{ scope.row.coverSize.heightOne }}
               div {{ scope.row.coverSize.heightTwo }}
+        el-table-column(label="开向")
+          template(slot-scope="scope") {{ scope.row.openDirection }}
         el-table-column(label="型号")
           template(slot-scope="scope") {{ scope.row.type }}
         el-table-column(label="颜色")
@@ -119,26 +130,30 @@
   import Bus from '@/lib/bus'
   import _ from 'lodash'
   import Vue from 'vue'
-  import { defaultSetting } from '@/config/base-info'
+  import { defaultSetting, wallTypeMap } from '@/config/base-info'
   export default {
     name: 'landing-page',
     data () {
       return {
         indexStr: '001',
+        wallTypeMap: wallTypeMap,
         holeData: {
           holeWidth: 0,
           holeHeight: 0,
           wallWidth: 0,
-          doorWidth: 0,
+          doorWidth: 45,
+          openDirection: '外左开',
           type: '',
           color: '',
           textrues: '',
+          wallType: '',
           number: 1,
           unit: '套',
           price: '',
           sizeNote: ''
         },
         baseForm: defaultSetting,
+        openDirection: ['内左开', '外左开', '内右开', '外右开'],
         tData: {
           doorSize: '',
           woodSize: {},
@@ -166,6 +181,20 @@
             value: '米'
           }
         ],
+        wallTypeConfig: [
+          {
+            label: '单丁墙',
+            value: 'single'
+          },
+          {
+            label: '双丁墙',
+            value: 'double'
+          },
+          {
+            label: '上丁墙',
+            value: 'up'
+          }
+        ],
         rules: {
           holeWidth: [
             { required: true, message: '请输入数字', trigger: 'blur' }
@@ -180,6 +209,31 @@
             { required: true, message: '请输入数字', trigger: 'blur' }
           ]
         }
+      }
+    },
+    computed: {
+      doorWidthDiff: function () {
+        let baseData = this.baseForm.baseForm
+        let curDoorWidthDiff = baseData.doorWidthDiff
+        if (this.holeData.wallType) {
+          if (this.holeData.wallType === 'single') {
+            curDoorWidthDiff = baseData.singleWall
+          }
+          if (this.holeData.wallType === 'double') {
+            curDoorWidthDiff = baseData.doubleWall
+          }
+        }
+        return curDoorWidthDiff
+      },
+      doorHeightDiff: function () {
+        let baseData = this.baseForm.baseForm
+        let curDoorHeightDiff = baseData.doorHeightDiff
+        if (this.holeData.wallType) {
+          if (this.holeData.wallType === 'up') {
+            curDoorHeightDiff = baseData.upWall
+          }
+        }
+        return curDoorHeightDiff
       }
     },
     methods: {
@@ -209,21 +263,29 @@
           if (valid) {
             /* 根据洞口尺寸计算其他尺寸 */
             let baseData = this.baseForm.baseForm
-            let doorWidthSize = this.holeData.holeWidth - baseData.doorWidthDiff
-            let doorHeightSize = this.holeData.holeHeight - baseData.doorHeightDiff
-            let cHengfang = doorWidthSize - parseFloat(baseData.woodWidthDiff)
-            let cShufang = doorHeightSize - parseFloat(baseData.woodHeightDiff)
-            let coverWidthOne = parseFloat(this.holeData.doorWidth) + parseFloat(baseData.doorCoverAdd)
-            let coverWidthTwo = parseFloat(this.holeData.wallWidth) + parseFloat(baseData.wallAdd) - coverWidthOne
+            let doorWidthSize = this.holeData.holeWidth - this.doorWidthDiff // 门板宽
+            let doorHeightSize = this.holeData.holeHeight - this.doorHeightDiff // 门板高
+            let cHengfang = doorWidthSize - parseFloat(baseData.woodWidthDiff) // 横方
+            let cShufang = doorHeightSize - parseFloat(baseData.woodHeightDiff) // 竖方
+            // let coverWidthOne = parseFloat(this.holeData.doorWidth) + parseFloat(baseData.doorCoverAdd)
+            let coverWidthOne = parseFloat(this.holeData.wallWidth) - parseFloat(this.holeData.doorWidth)
+            // let coverWidthTwo = parseFloat(this.holeData.wallWidth) + parseFloat(baseData.wallAdd) - coverWidthOne
+
             this.tData.createDate = Date.now()
+            // 门洞尺寸
             this.tData.holeSize = this.holeData.holeWidth + '*' + this.holeData.holeHeight + '*' + this.holeData.wallWidth
+            // 门板尺寸
             this.tData.doorSize = doorWidthSize + '*' + doorHeightSize
+            // 门方尺寸
             this.tData.woodSize.hengFang = cHengfang + '*4'
             this.tData.woodSize.shufang = cShufang + '*2'
-            this.tData.coverSize.widthOne = coverWidthOne + '*' + this.holeData.holeHeight + '*2'
-            this.tData.coverSize.widthTwo = coverWidthOne + '*' + this.holeData.holeWidth + '*1'
-            this.tData.coverSize.heightOne = coverWidthTwo + '*' + this.holeData.holeHeight + '*2'
-            this.tData.coverSize.heightTwo = coverWidthTwo + '*' + this.holeData.holeWidth + '*1'
+            // 门框 扣板
+            this.tData.coverSize.widthOne = coverWidthOne + '*' + (parseFloat(doorWidthSize) + parseFloat(baseData.koubanWidth)) + '*1'
+            this.tData.coverSize.widthTwo = coverWidthOne + '*' + (parseFloat(doorHeightSize) + parseFloat(baseData.koubanHeight)) + '*2'
+            // 门框 铝材
+            this.tData.coverSize.heightOne = parseFloat(doorWidthSize) + parseFloat(baseData.lucaiWidth)
+            this.tData.coverSize.heightTwo = parseFloat(doorHeightSize) + parseFloat(baseData.lucaiHeight)
+
             this.tData.singlePrice = this.holeData.price * this.holeData.number
             Object.assign(this.tData, this.holeData)
             const currentResult = _.cloneDeep(this.tData)

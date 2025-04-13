@@ -10,25 +10,26 @@
           tr
             th(colspan="2") 经销商名称: {{ productData.orderForm.dealerName }}
             th(colspan="4") 地址: {{ productData.orderForm.dealerAddress }}
-            th(colspan="2") 电话：{{ productData.orderForm.call }}
+            th(colspan="3") 电话：{{ productData.orderForm.call }}
           tr
             th(colspan="2") 客户名称：{{ productData.orderForm.clientName }}
             th(colspan="4") 地址：{{ productData.orderForm.clientAddress }}
-            th(colspan="2") 交货日期：{{ productData.orderForm.deliveryDate | date}}
+            th(colspan="3") 交货日期：{{ productData.orderForm.deliveryDate | date}}
           tr
-            th(colspan="8") 备注:
+            th(colspan="9") 备注:
           tr
             th(rowspan="2") 序号
             th(rowspan="2") 洞口尺寸
             th(rowspan="2") 门板尺寸
             th(colspan="2") 木方尺寸
-            th(colspan="2") 门套尺寸
+            th(colspan="2") 门框
+            th(collapse="2") 开向
             th(rowspan="2") 备注
           tr
             th 横方
             th 竖方
-            th 门开放向
-            th 反方向
+            th 扣板
+            th 铝材
         tbody
           tr(v-for="item, index in productData.sizeList")
             td {{ index + 1 }}
@@ -42,6 +43,8 @@
             td 
               span {{ item.coverSize && item.coverSize.heightOne }} <br/>
               span {{ item.coverSize && item.coverSize.heightTwo }}
+            td
+              span {{ item.openDirection }}
             td(width="100px")
               span {{ item.sizeNote }}
     .footer.f-tar.f-p-t-10

@@ -12,17 +12,18 @@
               tr
                 th(colspan="3") 经销商名称: {{ newOrder.orderForm.dealerName }}
                 th(colspan="5") 地址: {{ newOrder.orderForm.dealerAddress }}
-                th(colspan="2") 电话: {{ newOrder.orderForm.call }}
+                th(colspan="3") 电话: {{ newOrder.orderForm.call }}
               tr
                 th(colspan="3") 客户名称：{{ newOrder.orderForm.clientName }}
                 th(colspan="5") 地址：{{ newOrder.orderForm.clientAddress }}
-                th(colspan="2") 交货日期：{{ newOrder.orderForm.deliveryDate | date}}
+                th(colspan="3") 交货日期：{{ newOrder.orderForm.deliveryDate | date}}
               tr
                 th 序号
                 th 型号
                 th 颜色
                 th 洞口尺寸
-                th 门扇尺寸
+                th 门板尺寸
+                th 开向
                 th 材质
                 th 数量
                 th 单位
@@ -35,6 +36,7 @@
                 td {{ item.color }}
                 td {{ item.holeSize}}
                 td {{ item.doorSize }}
+                td {{ item.openDirection }}
                 td {{ item.textrues }}
                 td {{ item.number }}
                 td {{ item.unit }}
@@ -42,15 +44,15 @@
                 td ￥{{ item.singlePrice}}
               tr
                 td(colspan="8")
-                td(colspan="2").f-fwb 合计金额：￥ {{ newOrder.totalPrice | formatMoney }}
+                td(colspan="3").f-fwb 合计金额：￥ {{ newOrder.totalPrice | formatMoney }}
               tr 
-                td(colspan="10") 备注：{{ newOrder.orderForm.orderNote }}
+                td(colspan="11") 备注：{{ newOrder.orderForm.orderNote }}
               tr
                 td(colspan="5")
                   .editInput.f-fwb
                     label.middle(for="pay") 应付金额：
                     input.big(v-model="yingPay", size="mini", id="pay")
-                td(colspan="5")
+                td(colspan="6")
                   .editInput.f-fwb
                     label.middle(for="realPay") 实付金额：
                     input.big(v-model="amountPay", size="mini", id="realPay")
@@ -67,12 +69,12 @@
                   .editInput
                     label(for="contact") 联系人：
                     input.small(v-model="contactName", size="mini", id="contact")
-                td
+                td(colspan="2")
                   .editInput
                     label(for="phone") 电话：
                     input(v-model="contact", size="mini", id="phone")
               tr
-                td(colspan="10")
+                td(colspan="11")
                   .editInput.f-fwb
                     label.middle(for="recieve") 收货人：
                     input(v-model="receiveName", size="mini", id="recieve")

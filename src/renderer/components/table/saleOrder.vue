@@ -14,17 +14,18 @@
           tr
             th(colspan="3") 经销商名称: {{ saleData.orderForm.dealerName }}
             th(colspan="5") 地址: {{ saleData.orderForm.dealerAddress }}
-            th(colspan="2") 电话: {{ saleData.orderForm.call }}
+            th(colspan="3") 电话: {{ saleData.orderForm.call }}
           tr
             th(colspan="3") 客户名称：{{ saleData.orderForm.clientName }}
             th(colspan="5") 地址：{{ saleData.orderForm.clientAddress }}
-            th(colspan="2") 交货日期：{{ saleData.orderForm.deliveryDate | date }}
+            th(colspan="3") 交货日期：{{ saleData.orderForm.deliveryDate | date }}
           tr
             th 序号
             th 型号
             th 颜色
             th 洞口尺寸
-            th 门扇尺寸
+            th 门板尺寸
+            th 开向
             th 材质
             th 数量
             th 单位
@@ -37,6 +38,7 @@
             td {{ item.color }}
             td {{ item.holeSize}}
             td {{ item.doorSize }}
+            td {{ item.doorDeriction }}
             td {{ item.textrues }}
             td {{ item.number }}
             td {{ item.unit }}
@@ -44,20 +46,20 @@
             td ￥ {{ item.singlePrice }}
           tr
             td(colspan="8")
-            td.f-fwb(colspan="2") 合计金额：￥ {{ saleData.totalPrice | formatMoney }}
+            td.f-fwb(colspan="3") 合计金额：￥ {{ saleData.totalPrice | formatMoney }}
           tr 
-            td(colspan="10") 备注：{{ saleData.orderForm.orderNote }}
+            td(colspan="11") 备注：{{ saleData.orderForm.orderNote }}
           template(v-if="saleData.detailForm")
             tr
               td(colspan="5") 应付金额：{{ saleData.detailForm.yingPay }}
-              td(colspan="5") 实付金额：{{ saleData.detailForm.amountPay }}
+              td(colspan="6") 实付金额：{{ saleData.detailForm.amountPay }}
             tr
               td(colspan="3") 销售单位：{{ saleData.detailForm.saleCompany }}
               td(colspan="4") 地址：{{ saleData.detailForm.companyAdress }}
               td(colspan="1") 联系人：{{ saleData.detailForm.contactName }}
-              td(colspan="2") 电话：{{ saleData.detailForm.contact }}
+              td(colspan="3") 电话：{{ saleData.detailForm.contact }}
             tr
-              td(colspan="10") 收货人：{{ saleData.detailForm.receiveName }}
+              td(colspan="11") 收货人：{{ saleData.detailForm.receiveName }}
 </template>
 
 <script>

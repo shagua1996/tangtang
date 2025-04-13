@@ -12,10 +12,25 @@
       el-form-item(label="木方高差量:")
         el-input.small(size="mini" type="number" v-model="defaultSet.baseForm.woodHeightDiff")
       <br/>
-      el-form-item(label="门套宽增量:")
-        el-input.small(size="mini" type="number" v-model="defaultSet.baseForm.doorCoverAdd")
-      el-form-item(label="墙厚增量:")
-        el-input.small(size="mini" type="number" v-model="defaultSet.baseForm.wallAdd")
+      //- el-form-item(label="门套宽增量:")
+      //-   el-input.small(size="mini" type="number" v-model="defaultSet.baseForm.doorCoverAdd")
+      //- el-form-item(label="墙厚增量:")
+      //-   el-input.small(size="mini" type="number" v-model="defaultSet.baseForm.wallAdd")
+      el-form-item(label="单丁墙差量:")
+        el-input.small(size="mini" type="number" v-model="defaultSet.baseForm.singleWall")
+      el-form-item(label="双丁墙差量:")
+        el-input.small(size="mini" type="number" v-model="defaultSet.baseForm.doubleWall")
+      el-form-item(label="上丁墙差量:")
+        el-input.small(size="mini" type="number" v-model="defaultSet.baseForm.upWall")
+      <br/>
+      el-form-item(label="扣板宽增量:")
+        el-input.small(size="mini" type="number" v-model="defaultSet.baseForm.koubanWidth")
+      el-form-item(label="扣板高增量:")
+        el-input.small(size="mini" type="number" v-model="defaultSet.baseForm.koubanHeight")
+      el-form-item(label="铝材宽增量:")
+        el-input.small(size="mini" type="number" v-model="defaultSet.baseForm.lucaiWidth")
+      el-form-item(label="铝材高增量:")
+        el-input.small(size="mini" type="number" v-model="defaultSet.baseForm.lucaiHeight")
       .item-title.f-fs-14.f-fwb 其它信息
       .form-item.f-dflex.f-m-t-10
         .list
