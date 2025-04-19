@@ -6,14 +6,27 @@
           i.el-icon-search.f-fs-18.f-m-r-10
           el-input.serch-input(v-model.trim="searchText", placeholder="请输入想要搜索的内容", size="mini")
         .inner-box.f-m-t-10(v-if="orderArr.length > 0")
-          .left.beautify-scrollbar
-            template(v-for="item, index in orderArr")
-              .date.f-m-t-10.s-fc-333.f-fwb(v-if="showDate(index)")
-                i.el-icon-date
-                span {{ item.createAt | date('YYYY年MM月DD日') }}
-              .item.f-csp.f-p-5.f-toe(
-                @click="showProTable(item, index)",
-                :class="{'active' : currentIndex === index}") {{ item.orderId }}-{{ item.orderForm.clientName }}
+          .left-box
+            div 共{{orderArr.length}}条
+            .left.beautify-scrollbar
+              template(v-for="item, index in showOrderList")
+                .date.f-m-t-10.s-fc-333.f-fwb(v-if="showDate(index)")
+                  i.el-icon-date
+                  span {{ item.createAt | date('YYYY年MM月DD日') }}
+                .item.f-csp.f-p-5.f-toe(
+                  @click="showProTable(item, index)",
+                  :class="{'active' : currentIndex === index}") {{ item.orderId }}-{{ item.orderForm.clientName }}
+            .page
+              el-pagination(
+                small,
+                layout="prev, pager, next",
+                :hide-on-single-page="true",
+                :total="orderArr.length",
+                :pager-count="5",
+                :current-page="currentPage",
+                :page-size="limit",
+                @current-change="handlePageChange"
+              )
           .right.f-m-l-10(v-if="orderArr.length > 0")
             el-tabs
               el-tab-pane(label="销售单")
@@ -40,6 +53,7 @@
         activeTab: 'produ',
         historyData: [],
         orderArr: [],
+        showOrderList: [],
         orderHistory: [],
         currentIndex: 0,
         searchText: '',
@@ -48,7 +62,9 @@
           orderForm: {},
           orderSize: {},
           detailForm: {}
-        }
+        },
+        currentPage: 1,
+        limit: 100
       }
     },
     components: {
@@ -57,6 +73,15 @@
       'sale-order': SaleOrder
     },
     methods: {
+      getPageData (page) {
+        const startIndex = (this.currentPage - 1) * this.limit
+        const endIndex = startIndex + this.limit
+        this.showOrderList = this.orderArr.slice(startIndex, endIndex)
+      },
+      handlePageChange (val) {
+        this.currentPage = val
+        this.getPageData(val)
+      },
       async getCases () {
         this.historyData = await NEDB.findCase()
         this.initCases()
@@ -66,6 +91,7 @@
         this.orderArr = this.orderHistory
         this.orderData = this.orderHistory[0]
         this.currentIndex = 0
+        this.getPageData(1)
       },
       showProTable (data, index) {
         this.currentIndex = index
@@ -87,10 +113,11 @@
       },
       searchOrder () {
         if (!this.searchText) {
-          this.orderArr = this.orderHistory
+          this.getPageData(1)
+          this.currentPage = 1
         }
         let searchText = this.searchText.toUpperCase()
-        this.orderArr = _.filter(this.orderHistory, (item) => {
+        this.showOrderList = _.filter(this.orderHistory, (item) => {
           let finValue = _(item.orderForm).values().filter(value => value.toString().toUpperCase().indexOf(searchText) > -1).value().length
           return finValue
         })
@@ -116,10 +143,14 @@
   max-width: 1280px;
   min-width: 800px;
   display: flex;
+  .left-box {
+    max-width: 200px;;
+  }
 
   .left {
     width: 200px;
     min-width: 180px;
+    max-width: 200px;
     padding: 10px;
     height: 600px;
     overflow: auto;

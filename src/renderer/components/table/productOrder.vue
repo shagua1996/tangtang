@@ -8,22 +8,23 @@
       table.production-table.f-m-t-10
         thead
           tr
-            th(colspan="2") 经销商名称: {{ productData.orderForm.dealerName }}
+            th(colspan="3") 经销商名称: {{ productData.orderForm.dealerName }}
             th(colspan="4") 地址: {{ productData.orderForm.dealerAddress }}
             th(colspan="3") 电话：{{ productData.orderForm.call }}
           tr
-            th(colspan="2") 客户名称：{{ productData.orderForm.clientName }}
+            th(colspan="3") 客户名称：{{ productData.orderForm.clientName }}
             th(colspan="4") 地址：{{ productData.orderForm.clientAddress }}
             th(colspan="3") 交货日期：{{ productData.orderForm.deliveryDate | date}}
           tr
-            th(colspan="9") 备注:
+            th(colspan="10") 备注:
           tr
             th(rowspan="2") 序号
             th(rowspan="2") 洞口尺寸
+            th(rowspan="2") 墙体
             th(rowspan="2") 门板尺寸
             th(colspan="2") 木方尺寸
             th(colspan="2") 门框
-            th(collapse="2") 开向
+            th(rowspan="2") 开向
             th(rowspan="2") 备注
           tr
             th 横方
@@ -34,6 +35,7 @@
           tr(v-for="item, index in productData.sizeList")
             td {{ index + 1 }}
             td {{ item.holeSize }}
+            td {{ wallTypeMap[item.wallType] || '' }}
             td {{ item.doorSize }}
             td {{ item.woodSize && item.woodSize.hengFang }}
             td {{ item.woodSize && item.woodSize.shufang }}
@@ -53,6 +55,7 @@
 </template>
 
 <script>
+  import { wallTypeMap } from '@/config/base-info'
   export default {
     name: 'product-result',
     props: {
@@ -62,7 +65,8 @@
       return {
         printObj: {
           id: 'productOrder'
-        }
+        },
+        wallTypeMap: wallTypeMap
       }
     },
     methods: {

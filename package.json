@@ -1,8 +1,8 @@
 {
-  "name": "PengYueJu",
-  "version": "1.0.0",
+  "name": "PengYueJuPlus",
+  "version": "2.0.0",
   "author": "dingshirong",
-  "description": "An size calc project",
+  "description": "芃悦居铝木门",
   "license": null,
   "main": "./dist/electron/main.js",
   "scripts": {
@@ -22,8 +22,8 @@
     "postinstall": "npm run lint:fix"
   },
   "build": {
-    "productName": "PengYueJu",
-    "appId": "com.example.yourapp",
+    "productName": "PengYueJuPlus",
+    "appId": "com.pengyueju.lvmumen",
     "directories": {
       "output": "build"
     },

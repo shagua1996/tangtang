@@ -12,16 +12,17 @@
               tr
                 th(colspan="3") 经销商名称: {{ newOrder.orderForm.dealerName }}
                 th(colspan="5") 地址: {{ newOrder.orderForm.dealerAddress }}
-                th(colspan="3") 电话: {{ newOrder.orderForm.call }}
+                th(colspan="4") 电话: {{ newOrder.orderForm.call }}
               tr
                 th(colspan="3") 客户名称：{{ newOrder.orderForm.clientName }}
                 th(colspan="5") 地址：{{ newOrder.orderForm.clientAddress }}
-                th(colspan="3") 交货日期：{{ newOrder.orderForm.deliveryDate | date}}
+                th(colspan="4") 交货日期：{{ newOrder.orderForm.deliveryDate | date}}
               tr
                 th 序号
                 th 型号
                 th 颜色
                 th 洞口尺寸
+                th 墙体
                 th 门板尺寸
                 th 开向
                 th 材质
@@ -35,6 +36,7 @@
                 td {{ item.type }}
                 td {{ item.color }}
                 td {{ item.holeSize}}
+                td {{ wallTypeMap[item.wallType] || "" }}
                 td {{ item.doorSize }}
                 td {{ item.openDirection }}
                 td {{ item.textrues }}
@@ -44,11 +46,11 @@
                 td ￥{{ item.singlePrice}}
               tr
                 td(colspan="8")
-                td(colspan="3").f-fwb 合计金额：￥ {{ newOrder.totalPrice | formatMoney }}
+                td(colspan="4").f-fwb 合计金额：￥ {{ newOrder.totalPrice | formatMoney }}
               tr 
-                td(colspan="11") 备注：{{ newOrder.orderForm.orderNote }}
+                td(colspan="12") 备注：{{ newOrder.orderForm.orderNote }}
               tr
-                td(colspan="5")
+                td(colspan="6")
                   .editInput.f-fwb
                     label.middle(for="pay") 应付金额：
                     input.big(v-model="yingPay", size="mini", id="pay")
@@ -57,14 +59,14 @@
                     label.middle(for="realPay") 实付金额：
                     input.big(v-model="amountPay", size="mini", id="realPay")
               tr
-                td(colspan="3")
+                td(colspan="4")
                   .editInput
                     label(for="company") 销售单位：
-                    input(v-model="saleCompany", size="mini", id="company")
+                    input.middle(v-model="saleCompany", size="mini", id="company")
                 td(colspan="4")
                   .editInput
                     label(for="address") 地址：
-                    input.big(v-model="companyAdress", type="textarea", size="mini", id="address")
+                    input.middle(v-model="companyAdress", type="textarea", size="mini", id="address")
                 td(colspan="2")
                   .editInput
                     label(for="contact") 联系人：
@@ -74,7 +76,7 @@
                     label(for="phone") 电话：
                     input(v-model="contact", size="mini", id="phone")
               tr
-                td(colspan="11")
+                td(colspan="12")
                   .editInput.f-fwb
                     label.middle(for="recieve") 收货人：
                     input(v-model="receiveName", size="mini", id="recieve")
@@ -83,12 +85,44 @@
           el-button(type="primary", @click="saveForm") 确认并保存
       el-tab-pane(label="生产单", name="second")
         product-order(:productData="newOrder")
+        .footer.f-tar.f-p-t-10
+          el-button(type="primary", @click="saveForm") 确认并保存
+      el-tab-pane(label="标签", name="third")
+        .tag-box  
+          .tag#createTag
+            div
+             span.label 客户名称：
+             span {{ newOrder.orderForm.clientName }}
+            div
+             span.label 客户地址：
+             span {{ newOrder.orderForm.clientAddress }}
+            div
+             span.label 型号：
+             span {{ newOrder.sizeList[0].type }}
+            div
+             span.label 颜色：
+             span {{ newOrder.sizeList[0].color }}
+            div
+             span.label 洞口尺寸：
+             span {{ newOrder.sizeList[0].holeSize }}
+            div
+             span.label 门板尺寸：
+             span {{ newOrder.sizeList[0].doorSize }}
+            div
+             span.label 开向：
+             span {{ newOrder.sizeList[0].openDirection }}
+            div
+             span.label 备注：
+             span {{ newOrder.orderForm.orderNote }}
+          .print.f-tac.f-m-t-10
+            el-button(type="primary", v-print="printTag") 打印
   </div>
 </template>
 
 <script>
   import ProductOrder from '@/components/table/productOrder'
   import SaleOrder from '@/components/table/saleOrder'
+  import { wallTypeMap } from '@/config/base-info'
   import NEDB from '@/lib/nedb'
   export default {
     name: 'order-list',
@@ -102,6 +136,7 @@
         contact: '13310559908',
         contactName: '丁先生',
         receiveName: '',
+        wallTypeMap: wallTypeMap,
         newOrder: {
           orderId: 0,
           orderForm: {},
@@ -110,6 +145,9 @@
         activeName: 'first',
         printObj: {
           id: 'saleOrder'
+        },
+        printTag: {
+          id: 'createTag'
         }
       }
     },
@@ -170,6 +208,9 @@
     .big {
       width: 260px;
     }
+    .middle {
+      width: 240px;
+    }
   }
 }
 
@@ -184,5 +225,22 @@ td {
   text-align: left;
   padding: 10px;
   border: solid 1px rgb(224, 221, 221);
+}
+.tag-box {
+  width: 100%;
+  .tag {
+    width: 300px;
+    height: 300px;
+    margin: 0 auto;
+    padding: 8px;
+    border: 1px solid #eee;
+    >div {
+      margin-bottom: 5px;
+    }
+    .label {
+      display: inline-block;
+      width: 70px;
+    }
+  }
 }
 </style>
