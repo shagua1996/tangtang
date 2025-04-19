@@ -88,34 +88,35 @@
         .footer.f-tar.f-p-t-10
           el-button(type="primary", @click="saveForm") 确认并保存
       el-tab-pane(label="标签", name="third")
-        .tag-box  
-          .tag#createTag
-            div
-             span.label 客户名称：
-             span {{ newOrder.orderForm.clientName }}
-            div
-             span.label 客户地址：
-             span {{ newOrder.orderForm.clientAddress }}
-            div
-             span.label 型号：
-             span {{ newOrder.sizeList[0].type }}
-            div
-             span.label 颜色：
-             span {{ newOrder.sizeList[0].color }}
-            div
-             span.label 洞口尺寸：
-             span {{ newOrder.sizeList[0].holeSize }}
-            div
-             span.label 门板尺寸：
-             span {{ newOrder.sizeList[0].doorSize }}
-            div
-             span.label 开向：
-             span {{ newOrder.sizeList[0].openDirection }}
-            div
-             span.label 备注：
-             span {{ newOrder.orderForm.orderNote }}
-          .print.f-tac.f-m-t-10
-            el-button(type="primary", v-print="printTag") 打印
+        .tag-box
+          .tag-item(v-for="item, index in newOrder.sizeList")
+            .tag(:key="index", :id="'createTag'+index", style="font-size: 12pt;")
+              div
+                span.label 客户名称：
+                span {{ newOrder.orderForm.clientName }}
+              div
+                span.label 客户地址：
+                span {{ newOrder.orderForm.clientAddress }}
+              div
+                span.label 型号：
+                span {{ item.type }}
+              div
+                span.label 颜色：
+                span {{ item.color }}
+              div
+                span.label 洞口尺寸：
+                span {{ item.holeSize }}
+              div
+                span.label 门板尺寸：
+                span {{ item.doorSize }}
+              div
+                span.label 开向：
+                span {{ item.openDirection }}
+              div
+                span.label 备注：
+                span {{ newOrder.orderForm.orderNote }}
+            .print.f-tac.f-m-t-10
+              el-button(type="primary", v-print="getPrintConfig(index)") 打印
   </div>
 </template>
 
@@ -145,9 +146,6 @@
         activeName: 'first',
         printObj: {
           id: 'saleOrder'
-        },
-        printTag: {
-          id: 'createTag'
         }
       }
     },
@@ -156,6 +154,12 @@
       'sale-order': SaleOrder
     },
     methods: {
+      getPrintConfig (index) {
+        return {
+          id: `createTag${index}`,
+          popTitle: '产品标签打印'
+        }
+      },
       async initData () {
         this.newOrder = window.appData.currentOrderData
         console.log('this.new', this.newOrder)
@@ -228,18 +232,26 @@ td {
 }
 .tag-box {
   width: 100%;
-  .tag {
-    width: 300px;
-    height: 300px;
-    margin: 0 auto;
-    padding: 8px;
-    border: 1px solid #eee;
-    >div {
-      margin-bottom: 5px;
-    }
-    .label {
-      display: inline-block;
-      width: 70px;
+  height: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  overflow-y: auto;
+  .tag-item {
+    margin-right: 26px;
+    width: 260px;
+    .tag {
+      width: 260px;
+      height: 260px;
+      padding: 8px;
+      border: 1px solid #eee;
+      font-size: 16px;
+      >div {
+        margin-bottom: 5px;
+      }
+      .label {
+        display: inline-block;
+        width: 80px;
+      }
     }
   }
 }

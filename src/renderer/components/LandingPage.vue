@@ -98,7 +98,7 @@
           template(slot-scope="scope") {{ scope.row.price }}
         el-table-column(label="备注")
           template(slot-scope="scope") {{ scope.row.sizeNote }}
-        el-table-column(label="操作", width="100")
+        el-table-column(label="操作", width="100", fixed="right")
           template(slot-scope="scope")
             el-button(@click.native.prevent="deleteRow(scope.$index, getResultArr)", type="text", size="small") 移除
     el-dialog(title="创建订单", :visible.sync="orderDlgVisible", :close-on-click-modal="false")
