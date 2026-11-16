@@ -1,0 +1,323 @@
+'use strict'
+const Database = require('better-sqlite3')
+const { randomUUID } = require('crypto')
+const DEFAULT_SETTING = {
+  version: 1,
+  baseForm: {
+    doorWidthDiff: 80,
+    doorHeightDiff: 40,
+    woodWidthDiff: 60,
+    woodHeightDiff: 130,
+    doorCoverAdd: 19,
+    wallAdd: 13,
+    singleWall: 100,
+    doubleWall: 130,
+    upWall: 75,
+    koubanWidth: 7,
+    koubanHeight: 3,
+    lucaiWidth: 130,
+    lucaiHeight: 75,
+  },
+  typeOptions: [],
+  colorOptions: [],
+  textrues: [],
+  texturesOptions: [],
+}
+function parse(value) {
+  return JSON.parse(value, (_key, item) =>
+    item &&
+    typeof item === 'object' &&
+    Object.keys(item).length === 1 &&
+    Object.hasOwnProperty.call(item, '$$date')
+      ? new Date(item.$$date)
+      : item,
+  )
+}
+function json(value) {
+  return JSON.stringify(value, function (key, item) {
+    const original = key === '' ? value : this[key]
+    return original instanceof Date ? { $$date: original.getTime() } : item
+  })
+}
+function integer(value, fallback, max) {
+  return Number.isSafeInteger(Number(value)) && Number(value) >= 0
+    ? Math.min(max, Number(value))
+    : fallback
+}
+function identifier(id) {
+  if (typeof id !== 'string' || !id.length) throw new Error('订单编号不能为空')
+  return id
+}
+function object(value, name) {
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    (Object.getPrototypeOf(value) !== Object.prototype &&
+      Object.getPrototypeOf(value) !== null)
+  )
+    throw new Error(name + '必须是对象')
+}
+function validateSettings(setting) {
+  object(setting, '设置')
+  if (setting.version === undefined) throw new Error('设置缺少版本')
+  if (Object.hasOwnProperty.call(setting, 'baseForm'))
+    object(setting.baseForm, '计算参数')
+  for (const key of ['typeOptions', 'colorOptions', 'texturesOptions'])
+    if (Object.hasOwnProperty.call(setting, key)) {
+      if (!Array.isArray(setting[key])) throw new Error(key + '必须是数组')
+      for (const entry of setting[key]) object(entry, key + '选项')
+    }
+}
+const RECENT_ORDER_FIELDS = ['dealerName', 'dealerAddress', 'call']
+function recentInput({ field, value }) {
+  if (!RECENT_ORDER_FIELDS.includes(field))
+    throw new Error('不支持的最近输入字段')
+  if (typeof value !== 'string') throw new Error('最近输入必须是文本')
+  return { key: 'recent_order_input:' + field, value: value.trim() }
+}
+class Repository {
+  constructor(dbPath, options = {}) {
+    this.db = new Database(dbPath, {
+      readonly: !!options.readonly,
+      timeout: 10000,
+    })
+    this.db.pragma('foreign_keys = ON')
+    const schemaVersion = this.db.pragma('user_version', { simple: true })
+    if (schemaVersion > 1) {
+      this.db.close()
+      throw new Error('数据库由更高版本创建，请升级应用')
+    }
+    if (!options.readonly) {
+      // A consistent SQLite backup includes committed WAL contents, unlike copying the main file.
+      if (
+        schemaVersion < 1 &&
+        this.db
+          .prepare(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='orders'",
+          )
+          .get()
+      ) {
+        const backupPath = dbPath + '.before-schema-1-' + Date.now() + '.sqlite'
+        this.db.exec("VACUUM INTO '" + backupPath.replace(/'/g, "''") + "'")
+      }
+      this.db.pragma('journal_mode = WAL')
+      this.db.pragma('synchronous = FULL')
+      this.db.transaction(() =>
+        this.db
+          .exec(`CREATE TABLE IF NOT EXISTS orders(order_id TEXT PRIMARY KEY, header TEXT NOT NULL, summary TEXT NOT NULL, item_count INTEGER NOT NULL);
+        CREATE TABLE IF NOT EXISTS order_items(order_id TEXT NOT NULL REFERENCES orders(order_id) ON DELETE CASCADE, position INTEGER NOT NULL, data TEXT NOT NULL, PRIMARY KEY(order_id,position));
+        CREATE TABLE IF NOT EXISTS order_search(order_id TEXT NOT NULL REFERENCES orders(order_id) ON DELETE CASCADE, position INTEGER NOT NULL, value TEXT NOT NULL, PRIMARY KEY(order_id,position));
+        CREATE TABLE IF NOT EXISTS calculations(id TEXT PRIMARY KEY,data TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS settings(version TEXT PRIMARY KEY,data TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS metadata(key TEXT PRIMARY KEY,value TEXT NOT NULL);
+        INSERT INTO metadata(key,value) VALUES('schema_version','1') ON CONFLICT(key) DO NOTHING;
+        PRAGMA user_version=1;`),
+      )()
+    }
+    this.insertOrder = this.db.transaction((order) => {
+      object(order, '订单')
+      const { sizeList = [], ...header } = order
+      identifier(header.orderId)
+      object(header.orderForm, '订单表单')
+      if (!Array.isArray(sizeList)) throw new Error('订单明细必须是数组')
+      for (const item of sizeList) object(item, '订单明细')
+      if (Object.hasOwnProperty.call(header, 'detailForm'))
+        object(header.detailForm, '订单详情')
+      if (!header._id) header._id = randomUUID()
+      const summary = {
+        orderId: header.orderId,
+        createAt: header.createAt,
+        orderForm: header.orderForm,
+        totalPrice: header.totalPrice,
+        itemCount: sizeList.length,
+      }
+      this.db
+        .prepare('INSERT INTO orders VALUES(?,?,?,?)')
+        .run(header.orderId, json(header), json(summary), sizeList.length)
+      const insert = this.db.prepare('INSERT INTO order_items VALUES(?,?,?)')
+      sizeList.forEach((item, index) =>
+        insert.run(header.orderId, index, json(item)),
+      )
+      const search = this.db.prepare('INSERT INTO order_search VALUES(?,?,?)')
+      Object.values(header.orderForm).forEach((v, i) =>
+        search.run(
+          header.orderId,
+          i,
+          v == null ? '' : v.toString().toUpperCase(),
+        ),
+      )
+      return header.orderId
+    })
+  }
+  createOrder(order) {
+    return this.insertOrder(order)
+  }
+  listOrders({ page = 1, pageSize = 100, search = '' } = {}) {
+    page = Math.max(1, integer(page, 1, 100000000))
+    pageSize = Math.max(1, integer(pageSize, 100, 100))
+    const term = String(search).toUpperCase()
+    const where = term
+      ? ' WHERE EXISTS(SELECT 1 FROM order_search s WHERE s.order_id=o.order_id AND instr(s.value,?)>0)'
+      : ''
+    const params = term ? [term] : []
+    // A read transaction keeps count and page on the same WAL snapshot.
+    return this.db.transaction(() => ({
+      items: this.db
+        .prepare(
+          'SELECT summary FROM orders o' +
+            where +
+            ' ORDER BY order_id DESC LIMIT ? OFFSET ?',
+        )
+        .all(...params, pageSize, (page - 1) * pageSize)
+        .map((r) => parse(r.summary)),
+      total: this.db
+        .prepare('SELECT count(*) n FROM orders o' + where)
+        .get(...params).n,
+      page,
+      pageSize,
+    }))()
+  }
+  getOrderHeader(orderId) {
+    const row = this.db
+      .prepare('SELECT header,item_count FROM orders WHERE order_id=?')
+      .get(identifier(orderId))
+    return row ? { ...parse(row.header), itemCount: row.item_count } : null
+  }
+  listOrderItems({ orderId, offset = 0, limit = 100 }) {
+    identifier(orderId)
+    offset = integer(offset, 0, Number.MAX_SAFE_INTEGER)
+    limit = Math.max(1, integer(limit, 100, 500))
+    return this.db.transaction(() => ({
+      items: this.db
+        .prepare(
+          'SELECT data FROM order_items WHERE order_id=? AND position>=? ORDER BY position LIMIT ?',
+        )
+        .all(orderId, offset, limit)
+        .map((r) => parse(r.data)),
+      total:
+        this.db
+          .prepare('SELECT item_count n FROM orders WHERE order_id=?')
+          .get(orderId)?.n || 0,
+    }))()
+  }
+  saveOrderDetail({ orderId, detailForm }) {
+    return this.db.transaction(() => {
+      object(detailForm, '订单详情')
+      const row = this.db
+        .prepare('SELECT header FROM orders WHERE order_id=?')
+        .get(identifier(orderId))
+      if (!row) throw new Error('订单不存在')
+      const header = parse(row.header)
+      header.detailForm = detailForm
+      this.db
+        .prepare('UPDATE orders SET header=? WHERE order_id=?')
+        .run(json(header), orderId)
+      return true
+    })()
+  }
+  deleteOrder(orderId) {
+    return this.db.transaction(
+      () =>
+        this.db
+          .prepare('DELETE FROM orders WHERE order_id=?')
+          .run(identifier(orderId)).changes,
+    )()
+  }
+  saveCalculation(record) {
+    return this.db.transaction(() => {
+      object(record, '计算记录')
+      const data = { ...record, _id: record._id || randomUUID() }
+      this.db
+        .prepare('INSERT INTO calculations VALUES(?,?)')
+        .run(data._id, json(data))
+      return data._id
+    })()
+  }
+  getSettings() {
+    const row = this.db
+      .prepare('SELECT data FROM settings ORDER BY rowid LIMIT 1')
+      .get()
+    return row ? parse(row.data) : parse(json(DEFAULT_SETTING))
+  }
+  getRecentOrderInputs() {
+    const query = this.db.prepare('SELECT value FROM metadata WHERE key=?')
+    return Object.fromEntries(
+      RECENT_ORDER_FIELDS.map((field) => {
+        const row = query.get('recent_order_input:' + field)
+        return [field, row ? JSON.parse(row.value) : []]
+      }),
+    )
+  }
+  rememberOrderInput(params) {
+    const { key, value } = recentInput(params)
+    return this.db.transaction(() => {
+      const row = this.db
+        .prepare('SELECT value FROM metadata WHERE key=?')
+        .get(key)
+      const previous = row ? JSON.parse(row.value) : []
+      if (!value) return previous
+      const next = [value, ...previous.filter((item) => item !== value)].slice(
+        0,
+        10,
+      )
+      this.db
+        .prepare(
+          'INSERT INTO metadata(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
+        )
+        .run(key, JSON.stringify(next))
+      return next
+    })()
+  }
+  deleteRecentOrderInput(params) {
+    const { key, value } = recentInput(params)
+    return this.db.transaction(() => {
+      const row = this.db
+        .prepare('SELECT value FROM metadata WHERE key=?')
+        .get(key)
+      const next = (row ? JSON.parse(row.value) : []).filter(
+        (item) => item !== value,
+      )
+      this.db
+        .prepare(
+          'INSERT INTO metadata(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
+        )
+        .run(key, JSON.stringify(next))
+      return next
+    })()
+  }
+  saveSettings(setting) {
+    return this.db.transaction(() => {
+      validateSettings(setting)
+      const version = json(setting.version)
+      const previous = this.db
+        .prepare('SELECT data FROM settings WHERE version=?')
+        .get(version)
+      const next = { ...(previous ? parse(previous.data) : {}), ...setting }
+      validateSettings(next)
+      this.db
+        .prepare(
+          'INSERT INTO settings VALUES(?,?) ON CONFLICT(version) DO UPDATE SET data=excluded.data',
+        )
+        .run(version, json(next))
+      return next
+    })()
+  }
+  nextOrderNumber({ date, index = '001' }) {
+    if (!/^\d{8}$/.test(date)) throw new Error('日期必须为 YYYYMMDD')
+    let current = integer(index, 1, Number.MAX_SAFE_INTEGER - 1)
+    const exists = this.db.prepare('SELECT 1 FROM orders WHERE order_id=?')
+    while (exists.get(date + String(current).padStart(3, '0'))) current++
+    const result = String(current).padStart(3, '0')
+    return { no: date + result, index: result }
+  }
+  close() {
+    this.db.close()
+  }
+}
+module.exports = {
+  Repository,
+  DEFAULT_SETTING,
+  encode: json,
+  decode: parse,
+  validateSettings,
+}

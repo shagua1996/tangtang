@@ -1,0 +1,5 @@
+const { parentPort, workerData } = require('node:worker_threads')
+require('./migrate.cjs')
+  .migrate(workerData)
+  .then((result) => parentPort.postMessage({ result }))
+  .catch((error) => parentPort.postMessage({ error: error.message }))

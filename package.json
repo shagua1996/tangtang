@@ -1,139 +1,68 @@
 {
   "name": "PengYueJuPlus",
   "version": "2.0.2",
-  "author": "dingshirong",
+  "private": true,
   "description": "芃悦居铝木门",
-  "license": null,
-  "main": "./dist/electron/main.js",
+  "author": "dingshirong",
+  "main": "desktop/main.cjs",
   "scripts": {
-    "build": "node .electron-vue/build.js && electron-builder",
-    "build:dir": "node .electron-vue/build.js && electron-builder --dir",
-    "build:clean": "cross-env BUILD_TARGET=clean node .electron-vue/build.js",
-    "build:web": "cross-env BUILD_TARGET=web node .electron-vue/build.js",
-    "dev": "node .electron-vue/dev-runner.js",
-    "e2e": "npm run pack && mocha test/e2e",
-    "lint": "eslint --ext .js,.vue -f ./node_modules/eslint-friendly-formatter src test",
-    "lint:fix": "eslint --ext .js,.vue -f ./node_modules/eslint-friendly-formatter --fix src test",
-    "pack": "npm run pack:main && npm run pack:renderer",
-    "pack:main": "cross-env NODE_ENV=production webpack --progress --colors --config .electron-vue/webpack.main.config.js",
-    "pack:renderer": "cross-env NODE_ENV=production webpack --progress --colors --config .electron-vue/webpack.renderer.config.js",
-    "test": "npm run unit && npm run e2e",
-    "unit": "karma start test/unit/karma.conf.js",
-    "postinstall": "npm run lint:fix"
+    "dev": "node tools/dev.cjs",
+    "build": "vue-tsc --noEmit && vite build",
+    "build:dir": "npm run build && electron-builder --dir --win --x64",
+    "dist": "npm run build && electron-builder --win nsis --x64",
+    "test": "tsx --test tests/*.test.ts && node tools/electron-node.cjs tests/storage.cjs && node tools/electron-node.cjs tests/recent-inputs.cjs",
+    "benchmark": "node tools/electron-node.cjs tools/benchmark.cjs",
+    "typecheck": "vue-tsc --noEmit",
+    "postinstall": "electron-builder install-app-deps",
+    "test:e2e": "npm run build && node tests/electron.cjs && node tests/recent-inputs-ui.cjs && node tests/stale-preload.cjs && node tests/stale-preload.cjs --old-main && node tests/documents.cjs && node tests/print.cjs"
+  },
+  "dependencies": {
+    "better-sqlite3": "8.7.0",
+    "vue": "3.5.13",
+    "element-plus": "2.9.5",
+    "nedb": "1.8.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "5.2.3",
+    "vite": "6.2.6",
+    "typescript": "5.8.3",
+    "vue-tsc": "2.2.8",
+    "tsx": "4.19.3",
+    "@types/node": "22.14.0",
+    "electron": "22.3.27",
+    "electron-builder": "24.13.3",
+    "@playwright/test": "1.51.1"
   },
   "build": {
-    "productName": "PengYueJuPlus",
     "appId": "com.pengyueju.lvmumen",
+    "productName": "PengYueJuPlus",
     "directories": {
-      "output": "build"
+      "output": "release"
     },
     "files": [
-      "dist/electron/**/*"
+      "dist/**",
+      "desktop/**",
+      "package.json"
     ],
-    "dmg": {
-      "contents": [
+    "asarUnpack": [
+      "node_modules/better-sqlite3/**"
+    ],
+    "win": {
+      "icon": "build/icons/icon.ico",
+      "target": [
         {
-          "x": 410,
-          "y": 150,
-          "type": "link",
-          "path": "/Applications"
-        },
-        {
-          "x": 130,
-          "y": 150,
-          "type": "file"
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
-    "mac": {
-      "icon": "build/icons/icon.icns"
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false
     },
-    "win": {
-      "icon": "build/icons/icon.ico"
-    },
-    "linux": {
-      "icon": "build/icons"
-    }
-  },
-  "dependencies": {
-    "vue": "^2.5.16",
-    "vue-electron": "^1.0.6",
-    "vue-print-nb": "^1.7.3",
-    "vue-router": "^3.0.1",
-    "vuex": "^3.0.1",
-    "vuex-electron": "^1.0.0"
-  },
-  "devDependencies": {
-    "ajv": "^6.5.0",
-    "axios": "^0.18.0",
-    "babel-core": "^6.26.3",
-    "babel-eslint": "^8.2.3",
-    "babel-loader": "^7.1.4",
-    "babel-minify-webpack-plugin": "^0.3.1",
-    "babel-plugin-istanbul": "^4.1.6",
-    "babel-plugin-transform-runtime": "^6.23.0",
-    "babel-preset-env": "^1.7.0",
-    "babel-preset-stage-0": "^6.24.1",
-    "babel-register": "^6.26.0",
-    "cfonts": "^2.1.2",
-    "chai": "^4.1.2",
-    "chalk": "^2.4.1",
-    "copy-webpack-plugin": "^4.5.1",
-    "cross-env": "^5.1.6",
-    "css-loader": "^0.28.11",
-    "del": "^3.0.0",
-    "devtron": "^1.4.0",
-    "electron": "^8.5.2",
-    "electron-builder": "^20.19.2",
-    "electron-debug": "^1.5.0",
-    "electron-devtools-installer": "^2.2.4",
-    "element-ui": "^2.15.1",
-    "eslint": "^4.19.1",
-    "eslint-config-standard": "^11.0.0",
-    "eslint-friendly-formatter": "^4.0.1",
-    "eslint-loader": "^2.0.0",
-    "eslint-plugin-html": "^4.0.3",
-    "eslint-plugin-import": "^2.12.0",
-    "eslint-plugin-node": "^6.0.1",
-    "eslint-plugin-promise": "^3.8.0",
-    "eslint-plugin-standard": "^3.1.0",
-    "file-loader": "^1.1.11",
-    "html-webpack-plugin": "^3.2.0",
-    "inject-loader": "^4.0.1",
-    "karma": "^2.0.2",
-    "karma-chai": "^0.1.0",
-    "karma-coverage": "^1.1.2",
-    "karma-electron": "^6.0.0",
-    "karma-mocha": "^1.3.0",
-    "karma-sourcemap-loader": "^0.3.7",
-    "karma-spec-reporter": "^0.0.32",
-    "karma-webpack": "^3.0.0",
-    "listr": "^0.14.3",
-    "lodash": "^4.17.21",
-    "mini-css-extract-plugin": "0.4.0",
-    "mocha": "^5.2.0",
-    "moment": "^2.29.1",
-    "multispinner": "^0.2.1",
-    "nedb": "^1.8.0",
-    "node-loader": "^0.6.0",
-    "node-sass": "^4.14.1",
-    "pug": "^3.0.2",
-    "pug-html-loader": "^1.1.5",
-    "pug-loader": "^2.4.0",
-    "pug-plain-loader": "^1.1.0",
-    "require-dir": "^1.0.0",
-    "sass-loader": "^7.3.1",
-    "spectron": "^3.8.0",
-    "style-loader": "^0.21.0",
-    "url-loader": "^1.0.1",
-    "vue-html-loader": "^1.2.4",
-    "vue-loader": "^15.2.4",
-    "vue-style-loader": "^4.1.0",
-    "vue-template-compiler": "^2.5.16",
-    "webpack": "^4.15.1",
-    "webpack-cli": "^3.0.8",
-    "webpack-dev-server": "^3.1.4",
-    "webpack-hot-middleware": "^2.22.2",
-    "webpack-merge": "^4.1.3"
+    "electronDist": "node_modules/electron/dist"
   }
 }
