@@ -90,31 +90,31 @@
       el-tab-pane(label="标签", name="third")
         .tag-box
           .tag-item(v-for="item, index in newOrder.sizeList")
-            .tag(:key="index", :id="'createTag'+index", style="font-size: 12pt;")
+            .tag(:key="index", :id="'createTag'+index")
               div
                 span.label 客户名称：
-                span {{ newOrder.orderForm.clientName }}
+                span.f-fwb {{ newOrder.orderForm.clientName }}
               div
                 span.label 客户地址：
-                span {{ newOrder.orderForm.clientAddress }}
+                span.f-fwb {{ newOrder.orderForm.clientAddress }}
               div
                 span.label 型号：
-                span {{ item.type }}
+                span.f-fwb {{ item.type }}
               div
                 span.label 颜色：
-                span {{ item.color }}
+                span.f-fwb {{ item.color }}
               div
                 span.label 洞口尺寸：
-                span {{ item.holeSize }}
+                span.f-fwb {{ item.holeSize }}
               div
                 span.label 门板尺寸：
-                span {{ item.doorSize }}
+                span.f-fwb {{ item.doorSize }}
               div
                 span.label 开向：
-                span {{ item.openDirection }}
+                span.f-fwb {{ item.openDirection }}
               div
                 span.label 备注：
-                span {{ newOrder.orderForm.orderNote }}
+                span.f-fwb {{ newOrder.orderForm.orderNote }}
             .print.f-tac.f-m-t-10
               el-button(type="primary", v-print="getPrintConfig(index)") 打印
   </div>
@@ -156,8 +156,7 @@
     methods: {
       getPrintConfig (index) {
         return {
-          id: `createTag${index}`,
-          popTitle: '产品标签打印'
+          id: `createTag${index}`
         }
       },
       async initData () {
@@ -237,22 +236,30 @@ td {
   flex-wrap: wrap;
   overflow-y: auto;
   .tag-item {
-    margin-right: 26px;
-    width: 260px;
+    margin-right: 10px;
+    width: 240px;
     .tag {
-      width: 260px;
-      height: 260px;
-      padding: 8px;
+      width: 100%;
       border: 1px solid #eee;
-      font-size: 16px;
+      font-size: 12pt;
       >div {
-        margin-bottom: 5px;
+        margin-bottom: 2px;
       }
       .label {
         display: inline-block;
         width: 80px;
       }
     }
+  }
+}
+@media print {
+  @page {
+    size: auto;
+    margin: 2mm;
+  }
+  .tag {
+    height: 100%;
+    font-size: 12pt;
   }
 }
 </style>

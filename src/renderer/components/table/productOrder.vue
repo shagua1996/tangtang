@@ -9,22 +9,23 @@
         thead
           tr
             th(colspan="3") 经销商名称: {{ productData.orderForm.dealerName }}
-            th(colspan="4") 地址: {{ productData.orderForm.dealerAddress }}
+            th(colspan="5") 地址: {{ productData.orderForm.dealerAddress }}
             th(colspan="3") 电话：{{ productData.orderForm.call }}
           tr
             th(colspan="3") 客户名称：{{ productData.orderForm.clientName }}
-            th(colspan="4") 地址：{{ productData.orderForm.clientAddress }}
+            th(colspan="5") 地址：{{ productData.orderForm.clientAddress }}
             th(colspan="3") 交货日期：{{ productData.orderForm.deliveryDate | date}}
           tr
-            th(colspan="10") 备注:
+            th(colspan="11") 备注:
           tr
             th(rowspan="2") 序号
             th(rowspan="2") 洞口尺寸
-            th(rowspan="2") 墙体
             th(rowspan="2") 门板尺寸
             th(colspan="2") 木方尺寸
             th(colspan="2") 门框
             th(rowspan="2") 开向
+            th(rowspan="2") 型号
+            th(rowspan="2") 颜色
             th(rowspan="2") 备注
           tr
             th 横方
@@ -35,7 +36,6 @@
           tr(v-for="item, index in productData.sizeList")
             td {{ index + 1 }}
             td {{ item.holeSize }}
-            td {{ wallTypeMap[item.wallType] || '' }}
             td {{ item.doorSize }}
             td {{ item.woodSize && item.woodSize.hengFang }}
             td {{ item.woodSize && item.woodSize.shufang }}
@@ -47,6 +47,10 @@
               span {{ item.coverSize && item.coverSize.heightTwo }}
             td
               span {{ item.openDirection }}
+            td
+              span {{ item.type }}
+            td
+              span {{ item.color }}
             td(width="100px")
               span {{ item.sizeNote }}
     .footer.f-tar.f-p-t-10
