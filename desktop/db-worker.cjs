@@ -8,6 +8,7 @@ const allowed = new Set([
   'createOrder',
   'saveOrderDetail',
   'deleteOrder',
+  'deleteOrders',
   'saveCalculation',
   'getSettings',
   'saveSettings',

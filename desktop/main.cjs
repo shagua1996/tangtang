@@ -234,6 +234,7 @@ for (const name of [
   'createOrder',
   'saveOrderDetail',
   'deleteOrder',
+  'deleteOrders',
   'saveCalculation',
   'saveSettings',
   'rememberOrderInput',

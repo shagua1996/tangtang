@@ -6,6 +6,7 @@ const names = [
   'createOrder',
   'saveOrderDetail',
   'deleteOrder',
+  'deleteOrders',
   'saveCalculation',
   'getSettings',
   'saveSettings',

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, shallowRef, watch, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, shallowRef, watch, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { formatDate, formatMoney } from '../domain/business'
+import { formatDate } from '../domain/business'
 import OrderView from './OrderView.vue'
 const emit = defineEmits<{ deleted: [id: string] }>()
 const search = ref(''),
@@ -16,6 +16,26 @@ const search = ref(''),
   actionBusy = ref(false),
   listError = ref(''),
   detailError = ref('')
+const checkedIds = ref<string[]>([])
+const selectionLocked = computed(
+  () => busy.value || actionBusy.value || !!listError.value,
+)
+const allChecked = computed(
+  () => summaries.value.length > 0 && checkedIds.value.length === summaries.value.length,
+)
+const partlyChecked = computed(
+  () => checkedIds.value.length > 0 && !allChecked.value,
+)
+function toggleOrder(id: string, checked: boolean) {
+  if (selectionLocked.value) return
+  checkedIds.value = checked
+    ? [...new Set([...checkedIds.value, id])]
+    : checkedIds.value.filter((value) => value !== id)
+}
+function togglePage(checked: boolean) {
+  if (!selectionLocked.value)
+    checkedIds.value = checked ? summaries.value.map((item) => item.orderId) : []
+}
 let request = 0,
   detailRequest = 0,
   cacheRevision = 0,
@@ -68,6 +88,7 @@ function changePage(value: number) {
 }
 async function load(): Promise<void> {
   const seq = ++request
+  checkedIds.value = []
   busy.value = true
   listError.value = ''
   try {
@@ -105,6 +126,8 @@ watch(search, () => {
   ++detailRequest
   selected.value = null
   rows.value = []
+  checkedIds.value = []
+  busy.value = true
   clearTimeout(timer)
   timer = setTimeout(() => {
     page.value = 1
@@ -118,20 +141,41 @@ function invalidate() {
 }
 async function remove() {
   if (actionBusy.value || !selected.value) return
-  const id = selected.value.orderId
+  await removeOrders([selected.value.orderId], false)
+}
+async function removeChecked() {
+  if (selectionLocked.value || !checkedIds.value.length) return
+  await removeOrders([...checkedIds.value], true)
+}
+async function removeOrders(ids: string[], batch: boolean) {
+  actionBusy.value = true
   try {
     await ElMessageBox.confirm(
-      '对应的生产单将一起删除，删除后无法恢复。',
-      '删除订单',
-      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' },
+      batch
+        ? `确定删除选中的 ${ids.length} 笔订单吗？对应的生产单将一起删除，删除后无法恢复。`
+        : '对应的生产单将一起删除，删除后无法恢复。',
+      batch ? '批量删除订单' : '删除订单',
+      {
+        type: 'warning',
+        confirmButtonText: batch ? '确认删除' : '删除',
+        cancelButtonText: '取消',
+        autofocus: false,
+        closeOnClickModal: false,
+      },
     )
-    actionBusy.value = true
-    await window.tangtang.deleteOrder(id)
+    if (batch && typeof window.tangtang.deleteOrders !== 'function')
+      throw new Error('批量删除暂不可用，请重启应用后重试')
+    const count = batch
+      ? await window.tangtang.deleteOrders(ids)
+      : await window.tangtang.deleteOrder(ids[0])
     invalidate()
-    emit('deleted', id)
-    selected.value = null
+    ids.forEach((id) => emit('deleted', id))
+    if (ids.includes(selectedId.value)) {
+      selected.value = null
+      rows.value = []
+    }
     await load()
-    ElMessage.success('订单已删除')
+    ElMessage.success(batch ? `已删除 ${count} 笔订单` : '订单已删除')
   } catch (e) {
     if (e !== 'cancel' && e !== 'close') ElMessage.error(errorText(e))
   } finally {
@@ -174,7 +218,26 @@ defineExpose({
           clearable
           placeholder="搜索订单、客户、电话…"
           aria-label="搜索订单"
+          :disabled="actionBusy"
         />
+        <div class="history-batch-tools">
+          <el-checkbox
+            :model-value="allChecked"
+            :indeterminate="partlyChecked"
+            :disabled="selectionLocked || !summaries.length"
+            @change="togglePage(Boolean($event))"
+            >全选本页</el-checkbox
+          >
+          <span class="history-selection-count" aria-live="polite"
+            >已选 {{ checkedIds.length }} 笔</span
+          >
+          <el-button
+            type="primary"
+            :disabled="selectionLocked || !checkedIds.length"
+            @click="removeChecked"
+            >批量删除（{{ checkedIds.length }}）</el-button
+          >
+        </div>
       </div>
       <el-alert
         v-if="listError"
@@ -194,17 +257,25 @@ defineExpose({
           >
             {{ formatDate(item.createAt) }}
           </div>
-          <button
-            :class="['summary-item', { selected: selectedId === item.orderId }]"
-            @click="select(item.orderId)"
-          >
-            <span class="summary-top"
-              ><b>{{ item.orderId }}</b></span
-            ><span
-              >{{ item.orderForm.clientName || '未填写客户'
-              }}<small>{{ item.itemCount }} 条明细</small></span
-            ><strong>¥ {{ formatMoney(item.totalPrice) }}</strong>
-          </button>
+          <div class="summary-row">
+            <el-checkbox
+              class="summary-check"
+              :model-value="checkedIds.includes(item.orderId)"
+              :aria-label="`选择订单 ${item.orderId}`"
+              :disabled="selectionLocked"
+              @change="toggleOrder(item.orderId, Boolean($event))"
+            />
+            <button
+              :class="['summary-item', { selected: selectedId === item.orderId }]"
+              :disabled="actionBusy"
+              @click="select(item.orderId)"
+            >
+              <span class="summary-top"
+                ><b>{{ item.orderId }}</b></span
+              >
+              <span>{{ item.orderForm.clientName || '未填写客户' }}</span>
+            </button>
+          </div>
         </template>
         <div
           v-if="!summaries.length && !busy && !listError"
@@ -220,6 +291,7 @@ defineExpose({
         :total="total"
         :page-size="100"
         :current-page="page"
+        :disabled="busy || actionBusy"
         @current-change="changePage"
       />
     </aside>

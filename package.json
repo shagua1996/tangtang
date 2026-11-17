@@ -8,13 +8,13 @@
   "scripts": {
     "dev": "node tools/dev.cjs",
     "build": "vue-tsc --noEmit && vite build",
-    "build:dir": "npm run build && electron-builder --dir --win --x64",
-    "dist": "npm run build && electron-builder --win nsis --x64",
-    "test": "tsx --test tests/*.test.ts && node tools/electron-node.cjs tests/storage.cjs && node tools/electron-node.cjs tests/recent-inputs.cjs",
+    "build:dir": "node tools/package.cjs --installer",
+    "dist": "node tools/package.cjs --installer",
+    "test": "tsx --test tests/*.test.ts && node tools/electron-node.cjs tests/storage.cjs && node tools/electron-node.cjs tests/recent-inputs.cjs && node tools/electron-node.cjs tests/batch-delete.cjs",
     "benchmark": "node tools/electron-node.cjs tools/benchmark.cjs",
     "typecheck": "vue-tsc --noEmit",
-    "postinstall": "electron-builder install-app-deps",
-    "test:e2e": "npm run build && node tests/electron.cjs && node tests/recent-inputs-ui.cjs && node tests/stale-preload.cjs && node tests/stale-preload.cjs --old-main && node tests/documents.cjs && node tests/print.cjs"
+    "postinstall": "node tools/prepare-native.cjs",
+    "test:e2e": "npm run build && node tests/electron.cjs && node tests/history-batch-delete.cjs && node tests/recent-inputs-ui.cjs && node tests/stale-preload.cjs && node tests/stale-preload.cjs --old-main && node tests/documents.cjs && node tests/print.cjs"
   },
   "dependencies": {
     "better-sqlite3": "8.7.0",

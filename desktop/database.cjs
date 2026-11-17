@@ -223,6 +223,15 @@ class Repository {
           .run(identifier(orderId)).changes,
     )()
   }
+  deleteOrders(orderIds) {
+    if (!Array.isArray(orderIds) || !orderIds.length || orderIds.length > 100)
+      throw new Error('请选择 1 至 100 笔订单')
+    const ids = [...new Set(Array.from(orderIds, identifier))]
+    return this.db.transaction(() => {
+      const remove = this.db.prepare('DELETE FROM orders WHERE order_id=?')
+      return ids.reduce((count, id) => count + remove.run(id).changes, 0)
+    })()
+  }
   saveCalculation(record) {
     return this.db.transaction(() => {
       object(record, '计算记录')

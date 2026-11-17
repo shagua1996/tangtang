@@ -471,6 +471,36 @@ nav button.active {
   overflow: auto;
   padding: 8px;
 }
+.history-batch-tools {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 4px 8px;
+  margin-top: 10px;
+}
+.history-batch-tools .el-checkbox {
+  margin-right: 0;
+}
+.history-selection-count {
+  color: #718079;
+  font-size: 12px;
+}
+.history-batch-tools .el-button {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+.summary-row {
+  display: flex;
+  align-items: flex-start;
+}
+.summary-row .summary-check {
+  flex-shrink: 0;
+  margin: 8px 4px 0 0;
+}
+.summary-row .summary-item {
+  flex: 1;
+  min-width: 0;
+}
 .summary-item {
   border: 0;
   border-bottom: 1px solid #eef1e9;
@@ -495,16 +525,13 @@ nav button.active {
   margin-bottom: 9px;
   font-size: 14px;
 }
-.summary-item small {
-  color: #98a38e;
+.summary-item > span:last-child {
+  margin-bottom: 0;
+  overflow-wrap: anywhere;
 }
 .summary-top b {
   font-weight: 500;
   overflow-wrap: anywhere;
-}
-.summary-item > strong {
-  font-size: 14px;
-  font-weight: 600;
 }
 .history-list > .el-pagination {
   padding: 12px 8px;
