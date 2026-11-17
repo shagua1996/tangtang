@@ -1,4 +1,4 @@
-const { _electron: electron } = require('playwright')
+const { _electron: electron } = require('@playwright/test')
 const assert = require('node:assert/strict'),
   fs = require('node:fs'),
   path = require('node:path'),
@@ -123,6 +123,10 @@ async function main() {
           ' page and print must contain identical cell text and merged cells',
       )
     }
+    const currentLabel = await page.evaluate(tableSignature)
+    await page.locator('nav').getByRole('button', { name: '历史记录', exact: false }).click()
+    await page.locator('.history-detail').getByRole('tab', { name: '标签', exact: true }).click()
+    assert.deepEqual(await page.evaluate(tableSignature), currentLabel, 'Newly created order labels are immediately available in history')
     console.log(
       'documents: sales, production and label page/print cell contents and merged cells match; seven in-table input fields retained',
     )

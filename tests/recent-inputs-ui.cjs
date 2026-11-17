@@ -1,4 +1,4 @@
-const { _electron: electron } = require('playwright')
+const { _electron: electron } = require('@playwright/test')
 const assert = require('node:assert/strict'),
   fs = require('node:fs'),
   path = require('node:path'),

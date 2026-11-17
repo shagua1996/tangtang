@@ -152,8 +152,8 @@ async function removeOrders(ids: string[], batch: boolean) {
   try {
     await ElMessageBox.confirm(
       batch
-        ? `确定删除选中的 ${ids.length} 笔订单吗？对应的生产单将一起删除，删除后无法恢复。`
-        : '对应的生产单将一起删除，删除后无法恢复。',
+        ? `确定删除选中的 ${ids.length} 笔订单吗？对应的生产单和标签将一起删除，删除后无法恢复。`
+        : '对应的生产单和标签将一起删除，删除后无法恢复。',
       batch ? '批量删除订单' : '删除订单',
       {
         type: 'warning',
@@ -182,11 +182,15 @@ async function removeOrders(ids: string[], batch: boolean) {
     actionBusy.value = false
   }
 }
-async function print(kind: string) {
+async function print(kind: string, itemIndex?: number) {
   if (actionBusy.value || !selected.value) return
   actionBusy.value = true
   try {
-    await window.tangtang.printOrder({ orderId: selected.value.orderId, kind })
+    await window.tangtang.printOrder({
+      orderId: selected.value.orderId,
+      kind,
+      itemIndex,
+    })
   } catch (e) {
     ElMessage.error(errorText(e))
   } finally {
@@ -314,7 +318,7 @@ defineExpose({
         />
       </template>
       <div v-else-if="!detailError && !detailBusy" class="empty-state">
-        选择一笔订单，查看销售与生产明细
+        选择一笔订单，查看销售单、生产单与标签
       </div>
     </section>
   </div>

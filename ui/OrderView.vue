@@ -29,7 +29,6 @@ watch(tab, (value) => emit('tabChange', value), { immediate: true })
       ><el-tab-pane label="销售单" name="sale" /><el-tab-pane
         label="生产单"
         name="production" /><el-tab-pane
-        v-if="editable"
         label="标签"
         name="label"
     /></el-tabs>
@@ -111,6 +110,9 @@ watch(tab, (value) => emit('tabChange', value), { immediate: true })
 }
 .document-label-item {
   width: 240px;
+  /* Keep every label available while avoiding layout/paint for offscreen cards. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 240px;
 }
 .label-actions {
   text-align: center;

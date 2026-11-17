@@ -39,6 +39,10 @@ async function run() {
     )
     assert.equal(data.total, 202)
     assert.equal(data.items.length, 2)
+    assert.equal(await page.evaluate(() => typeof window.tangtang.deleteOrders), 'function')
+    assert.equal(await page.evaluate(() => window.tangtang.deleteOrders(['20261115001', '20261115002'])), 2)
+    assert.equal((await page.evaluate(() => window.tangtang.listOrders())).total, 200)
+    assert.equal(await page.evaluate(() => window.tangtang.getOrderHeader('20261115001')), null)
     assert.equal(await app.evaluate(({ app }) => app.isPackaged), true)
     console.log(
       'packaged: ASAR workers, native SQLite, preload and pagination passed',
