@@ -55,17 +55,17 @@ const detailGroups = [
       </colgroup>
       <thead>
         <tr>
-          <th colspan="3">经销商名称：{{ order.orderForm.dealerName }}</th>
-          <th colspan="5">地址：{{ order.orderForm.dealerAddress }}</th>
+          <th colspan="3">经销商名称：<span class="text-detail">{{ order.orderForm.dealerName }}</span></th>
+          <th colspan="5">地址：<span class="text-detail">{{ order.orderForm.dealerAddress }}</span></th>
           <th :colspan="kind === 'sale' ? 4 : 3">
-            电话：{{ order.orderForm.call }}
+            电话：<span class="text-detail">{{ order.orderForm.call }}</span>
           </th>
         </tr>
         <tr>
-          <th colspan="3">客户名称：{{ order.orderForm.clientName }}</th>
-          <th colspan="5">地址：{{ order.orderForm.clientAddress }}</th>
+          <th colspan="3">客户名称：<span class="text-detail">{{ order.orderForm.clientName }}</span></th>
+          <th colspan="5">地址：<span class="text-detail">{{ order.orderForm.clientAddress }}</span></th>
           <th :colspan="kind === 'sale' ? 4 : 3">
-            交货日期：{{ formatDate(order.orderForm.deliveryDate) }}
+            交货日期：<span class="text-detail">{{ formatDate(order.orderForm.deliveryDate) }}</span>
           </th>
         </tr>
         <template v-if="kind === 'production'">
@@ -122,7 +122,7 @@ const detailGroups = [
             </td>
           </tr>
           <tr>
-            <td colspan="12">备注：{{ order.orderForm.orderNote }}</td>
+            <td colspan="12"><span class="document-total">备注：</span>{{ order.orderForm.orderNote }}</td>
           </tr>
           <template v-if="order.detailForm || editable">
             <tr v-for="(group, index) in detailGroups" :key="index">
@@ -131,7 +131,7 @@ const detailGroups = [
                   class="document-field"
                   :class="{ 'document-emphasis': index !== 1 }"
                 >
-                  <span>{{ field.label }}：</span>
+                  <span class="document-total">{{ field.label }}：</span>
                   <input
                     v-if="editable"
                     class="document-detail-input"
@@ -152,6 +152,9 @@ const detailGroups = [
   </article>
 </template>
 <style scoped>
+.text-detail {
+  font-weight: 400;
+}
 .order-document {
   width: 100%;
   color: #606266;
