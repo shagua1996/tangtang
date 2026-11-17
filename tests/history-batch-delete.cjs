@@ -50,6 +50,7 @@ async function main() {
   const dialog = page.getByRole('dialog', { name: '批量删除订单', exact: true })
   await expect(dialog).toContainText('2 笔订单')
   await expect(dialog).toContainText('删除后无法恢复')
+  await expect(dialog).toContainText('标签')
   assert.equal((await page.evaluate(() => window.tangtang.listOrders())).total, 202)
   await dialog.getByRole('button', { name: '取消', exact: true }).click()
   await expect(remove).toHaveText('批量删除（2）')

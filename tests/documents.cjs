@@ -1,4 +1,4 @@
-const { _electron: electron } = require('playwright')
+const { _electron: electron } = require('@playwright/test')
 const assert = require('node:assert/strict'),
   fs = require('node:fs'),
   path = require('node:path'),
@@ -25,7 +25,7 @@ function tableSignature() {
     [...table.rows].map((row) =>
       [...row.cells].map((cell) => {
         const copy = cell.cloneNode(true)
-        for (const input of copy.querySelectorAll('input'))
+        for (const input of copy.querySelectorAll('input,textarea'))
           input.replaceWith(input.value)
         return {
           text: copy.textContent.replace(/\s+/g, ''),
@@ -79,6 +79,9 @@ async function main() {
     await modal.locator('textarea').fill('订单备注')
     await modal.getByRole('button', { name: '创建订单', exact: true }).click()
     await page.locator('.document-title').waitFor()
+    await page.locator('.order-view:visible').getByLabel('订单备注', { exact: true }).fill('当前销售备注\n第二行')
+    const headerValues = ['当前经销商', '当前经销商地址', '00012345678', '当前客户', '当前客户地址', '2026-12-02']
+    for (let i = 0; i < headerValues.length; i++) await page.locator('.document-header-input').nth(i).fill(headerValues[i])
     await page.getByLabel('应付金额', { exact: true }).fill('900')
     await page.getByLabel('实付金额', { exact: true }).fill('500')
     await page.getByLabel('收货人', { exact: true }).fill('收货人姓名')
@@ -87,7 +90,7 @@ async function main() {
       const expected = await page.evaluate(tableSignature)
       assert.ok(expected[0].length > 0)
       if (tab === '销售单')
-        assert.equal(await page.locator('.document-table input').count(), 7)
+        assert.equal(await page.locator('.document-detail-input').count(), 7)
       if (tab === '生产单')
         assert.equal(
           await page.locator('.document-table th[rowspan="2"]').count(),
@@ -123,6 +126,20 @@ async function main() {
           ' page and print must contain identical cell text and merged cells',
       )
     }
+    const currentLabel = await page.evaluate(tableSignature)
+    await page.locator('nav').getByRole('button', { name: '历史记录', exact: false }).click()
+    await page.locator('.history-detail').getByRole('tab', { name: '标签', exact: true }).click()
+    assert.deepEqual(await page.evaluate(tableSignature), currentLabel, 'Newly created order labels are immediately available in history')
+    await page.locator('.history-detail').getByRole('tab', { name: '销售单', exact: true }).click()
+    await page.getByLabel('收货人', { exact: true }).fill('历史页修改收货人')
+    await page.locator('.history-detail').getByLabel('订单备注', { exact: true }).fill('历史页修改整单备注')
+    await page.locator('.document-header-input').nth(3).fill('历史页修改客户')
+    await page.getByRole('button', { name: '确认并保存', exact: true }).click()
+    await page.getByText('订单已保存', { exact: true }).waitFor()
+    const historySale = await page.evaluate(tableSignature)
+    await page.locator('nav').getByRole('button', { name: '当前订单', exact: false }).click()
+    await page.getByRole('tab', { name: '销售单', exact: true }).click()
+    assert.deepEqual(await page.evaluate(tableSignature), historySale, 'History saves must synchronize the current order and preserve identical sales content')
     console.log(
       'documents: sales, production and label page/print cell contents and merged cells match; seven in-table input fields retained',
     )

@@ -10,11 +10,13 @@
     "build": "vue-tsc --noEmit && vite build",
     "build:dir": "node tools/package.cjs --installer",
     "dist": "node tools/package.cjs --installer",
-    "test": "tsx --test tests/*.test.ts && node tools/electron-node.cjs tests/storage.cjs && node tools/electron-node.cjs tests/recent-inputs.cjs && node tools/electron-node.cjs tests/batch-delete.cjs",
+    "test": "tsx --test tests/*.test.ts && node tools/electron-node.cjs tests/storage.cjs && node tools/electron-node.cjs tests/recent-inputs.cjs && node tools/electron-node.cjs tests/batch-delete.cjs && node tools/electron-node.cjs tests/requirements-storage.cjs && node tools/electron-node.cjs tests/sale-header-storage.cjs",
+    "test:coverage": "node --experimental-test-coverage --test-coverage-include=domain/** --test-coverage-include=ui/fields.ts --test-coverage-include=ui/recent-input-capability.ts --import tsx --test tests/*.test.ts",
+    "test:performance": "node tests/performance.cjs",
     "benchmark": "node tools/electron-node.cjs tools/benchmark.cjs",
     "typecheck": "vue-tsc --noEmit",
     "postinstall": "node tools/prepare-native.cjs",
-    "test:e2e": "npm run build && node tests/electron.cjs && node tests/history-batch-delete.cjs && node tests/recent-inputs-ui.cjs && node tests/stale-preload.cjs && node tests/stale-preload.cjs --old-main && node tests/documents.cjs && node tests/print.cjs"
+    "test:e2e": "npm run build && node tests/electron.cjs && node tests/history-batch-delete.cjs && node tests/history-labels.cjs && node tests/history-sale.cjs && node tests/recent-inputs-ui.cjs && node tests/stale-preload.cjs && node tests/stale-preload.cjs --old-main && node tests/requirements-ui.cjs && node tests/startup.cjs && node tests/documents.cjs && node tests/large-order.cjs && node tests/print.cjs"
   },
   "dependencies": {
     "better-sqlite3": "8.7.0",

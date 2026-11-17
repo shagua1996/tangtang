@@ -1,5 +1,5 @@
 'use strict'
-const {_electron:electron}=require('playwright')
+const {_electron:electron}=require('@playwright/test')
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),os=require('node:os')
 const {spawn}=require('node:child_process'),{performance}=require('node:perf_hooks')
 const root=path.resolve(__dirname,'..'),data=process.env.PERF_DATA_DIR||fs.mkdtempSync(path.join(os.tmpdir(),'tangtang-performance-'))

@@ -10,7 +10,7 @@ const fields = computed(() => [
   ['洞口尺寸', props.item.holeSize],
   ['门板尺寸', props.item.doorSize],
   ['开向', displayDirection(props.item)],
-  ['备注', props.order.orderForm.orderNote],
+  ['备注', props.item.sizeNote],
 ])
 </script>
 <template>

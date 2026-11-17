@@ -177,6 +177,7 @@ async function saveDetail() {
   await window.tangtang.saveOrderDetail({
     orderId: current.value.orderId,
     detailForm: clone(current.value.detailForm),
+    orderForm: clone(current.value.orderForm),
   })
   history.value?.refresh()
 }
@@ -484,6 +485,7 @@ onMounted(init)
           v-show="page === 'history'"
           ref="history"
           @deleted="current?.orderId === $event && (current = null)"
+          @saved="current?.orderId === $event.orderId && Object.assign(current, { detailForm: $event.detailForm, orderForm: $event.orderForm })"
         />
         <section v-show="page === 'settings'" class="settings-page">
           <div class="panel">

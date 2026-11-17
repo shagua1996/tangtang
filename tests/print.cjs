@@ -1,4 +1,4 @@
-const { _electron: electron } = require('playwright')
+const { _electron: electron } = require('@playwright/test')
 const fs = require('node:fs'),
   path = require('node:path'),
   os = require('node:os'),
@@ -106,7 +106,7 @@ async function main() {
     }),
   )
   const proof = await app.evaluate(() => global.printProof)
-  assert.equal(proof[0].rows, 3)
+  assert.equal(proof[0].rows, 6)
   assert.equal(proof[1].rows, 10000)
   assert.equal(proof[1].lastRow, true)
   assert.equal(proof[2].rows, 0)
