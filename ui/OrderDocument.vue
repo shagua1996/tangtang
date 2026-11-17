@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { formatDate, formatMoney } from '../domain/business'
+import { DEFAULT_DETAIL, formatDate, formatMoney } from '../domain/business'
 import { saleColumns, productionColumns, cell } from './fields'
 const props = withDefaults(
   defineProps<{
@@ -17,6 +17,19 @@ const props = withDefaults(
 const columns = computed(() =>
   props.kind === 'sale' ? saleColumns : productionColumns,
 )
+const detail = computed(() => ({ ...DEFAULT_DETAIL, ...props.order.detailForm }))
+const headerGroups = [
+  [{ key: 'dealerName', label: '经销商名称', aria: '经销商名称', span: 3 },
+   { key: 'dealerAddress', label: '地址', aria: '经销商地址', span: 5 },
+   { key: 'call', label: '电话', aria: '经销商电话', span: 4 }],
+  [{ key: 'clientName', label: '客户名称', aria: '客户名称', span: 3 },
+   { key: 'clientAddress', label: '地址', aria: '客户地址', span: 5 },
+   { key: 'deliveryDate', label: '交货日期', aria: '交货日期', span: 4 }],
+]
+const deliveryDate = computed({
+  get: () => formatDate(props.order.orderForm.deliveryDate),
+  set: (value: string) => { props.order.orderForm.deliveryDate = value },
+})
 const widths = computed(() =>
   props.kind === 'sale'
     ? [6, 6, 6, 16, 7, 11, 7, 6, 7, 7, 11, 10]
@@ -54,18 +67,16 @@ const detailGroups = [
         />
       </colgroup>
       <thead>
-        <tr>
-          <th colspan="3">经销商名称：{{ order.orderForm.dealerName }}</th>
-          <th colspan="5">地址：{{ order.orderForm.dealerAddress }}</th>
-          <th :colspan="kind === 'sale' ? 4 : 3">
-            电话：{{ order.orderForm.call }}
-          </th>
-        </tr>
-        <tr>
-          <th colspan="3">客户名称：{{ order.orderForm.clientName }}</th>
-          <th colspan="5">地址：{{ order.orderForm.clientAddress }}</th>
-          <th :colspan="kind === 'sale' ? 4 : 3">
-            交货日期：{{ formatDate(order.orderForm.deliveryDate) }}
+        <tr v-for="(group, index) in headerGroups" :key="index">
+          <th v-for="field in group" :key="field.key" :colspan="kind === 'sale' ? 4 : field.span === 4 ? 3 : field.span">
+            <label class="document-field">
+              <span>{{ field.label }}：</span>
+              <template v-if="editable && kind === 'sale'">
+                <input v-if="field.key === 'deliveryDate'" v-model="deliveryDate" type="date" class="document-header-input" :aria-label="field.aria" :disabled="busy" />
+                <input v-else v-model="order.orderForm[field.key]" class="document-header-input" :aria-label="field.aria" :disabled="busy" />
+              </template>
+              <span v-else class="document-header-value">{{ field.key === 'deliveryDate' ? formatDate(order.orderForm.deliveryDate) : order.orderForm[field.key] }}</span>
+            </label>
           </th>
         </tr>
         <template v-if="kind === 'production'">
@@ -118,18 +129,23 @@ const detailGroups = [
           <tr>
             <td colspan="8"></td>
             <td colspan="4" class="document-total">
-              合计金额：￥ {{ formatMoney(order.totalPrice) }}
+              <span class="document-field-label">合计金额：</span>￥ {{ formatMoney(order.totalPrice) }}
             </td>
           </tr>
           <tr>
-            <td colspan="12">备注：{{ order.orderForm.orderNote }}</td>
+            <td colspan="12">
+              <label class="document-field">
+                <span>备注：</span>
+                <textarea v-if="editable" v-model="order.orderForm.orderNote" class="document-note-input" aria-label="订单备注" :disabled="busy" rows="2" />
+                <span v-else class="document-note-value">{{ order.orderForm.orderNote }}</span>
+              </label>
+            </td>
           </tr>
-          <template v-if="order.detailForm || editable">
-            <tr v-for="(group, index) in detailGroups" :key="index">
+          <template v-for="(group, index) in detailGroups" :key="index">
+            <tr>
               <td v-for="field in group" :key="field.key" :colspan="field.span">
                 <label
                   class="document-field"
-                  :class="{ 'document-emphasis': index !== 1 }"
                 >
                   <span>{{ field.label }}：</span>
                   <input
@@ -140,7 +156,7 @@ const detailGroups = [
                     v-model="order.detailForm[field.key]"
                   />
                   <span v-else class="document-field-value">{{
-                    order.detailForm?.[field.key]
+                    detail[field.key]
                   }}</span>
                 </label>
               </td>
@@ -193,11 +209,12 @@ const detailGroups = [
   font-weight: 600;
   background: #fff;
 }
-.document-total,
-.document-emphasis {
+.document-field-label,
+.document-field > span:first-child {
   font-weight: 600;
 }
 .document-field {
+  font-weight: 400;
   display: flex;
   align-items: baseline;
   gap: 4px;
@@ -206,15 +223,21 @@ const detailGroups = [
 .document-field > span:first-child {
   flex-shrink: 0;
 }
-.document-field-value {
+.document-field-value,
+.document-header-value,
+.document-note-value {
+  font-weight: 400;
   min-width: 0;
   white-space: pre-wrap;
 }
-.document-detail-input {
+.document-detail-input,
+.document-header-input,
+.document-note-input {
   border: 0;
   outline: 0;
   background: transparent;
   font: inherit;
+  font-weight: 400;
   color: inherit;
   width: 0;
   min-width: 0;
@@ -222,9 +245,15 @@ const detailGroups = [
   padding: 0;
   border-radius: 0;
 }
-.document-detail-input:focus {
+.document-detail-input:focus,
+.document-header-input:focus,
+.document-note-input:focus {
   outline: 1px solid #409eff;
   outline-offset: 3px;
+}
+.document-note-input {
+  resize: vertical;
+  min-height: 40px;
 }
 @media print {
   .order-document {

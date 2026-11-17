@@ -26,7 +26,7 @@ async function main() {
     await window.tangtang.createOrder({
       ...header, orderId: 'LABEL-HISTORY',
       orderForm: { ...header.orderForm, no: 'LABEL-HISTORY', orderNote: '整单标签备注' },
-      sizeList: ['首张型号', '第二张型号', '末张型号'].map(type => ({ ...items[0], type, number: 9, sizeNote: '不要用于标签的单条备注' })),
+      sizeList: ['首张型号', '第二张型号', '末张型号'].map((type, index) => ({ ...items[0], type, number: 9, sizeNote: [undefined, '第二条生产备注', '第三条生产备注'][index] })),
     })
     const settings = await window.tangtang.getSettings()
     settings.baseForm.doorWidthDiff = 999
@@ -62,10 +62,12 @@ async function main() {
   await detail.getByRole('tab', { name: '标签', exact: true }).click()
   const cards = detail.locator('.document-label-item')
   await expect(cards).toHaveCount(3)
-  const expected = ['客户202', '浙江省永康市', '第二张型号', '原木', '900*2100*150', '820*2060', '外左开', '整单标签备注']
+  const expected = ['客户202', '浙江省永康市', '第二张型号', '原木', '900*2100*150', '820*2060', '外左开', '第二条生产备注']
   assert.deepEqual(await cards.nth(1).locator('strong').allTextContents(), expected)
   await expect(detail.locator('table,input,.el-pagination')).toHaveCount(0)
-  await expect(detail).not.toContainText('不要用于标签的单条备注')
+  await expect(detail).not.toContainText('整单标签备注')
+  await expect(cards.first().locator('.document-label-row strong').last()).toHaveText('')
+  await expect(cards.last().locator('.document-label-row strong').last()).toHaveText('第三条生产备注')
   fs.mkdirSync(path.join(root, 'test-results'), { recursive: true })
   await page.screenshot({ path: path.join(root, 'test-results/history-labels.png') })
   for (const [attempt, index] of [1, 2, 0].entries()) {
@@ -86,15 +88,44 @@ async function main() {
     await expect.poll(async () => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1)
     if (attempt === 1) await expect(page.getByText('标签打印测试失败', { exact: true })).toBeVisible()
   }
-  // Changing the selected order resets the tab and must never reuse old labels.
+  // Tab belongs to history, not the transient order detail component.
   await search.fill('客户201')
-  await expect(detail.locator('.document-number')).toContainText('20261115201')
-  await expect(detail.getByRole('tab', { name: '销售单', exact: true })).toHaveAttribute('aria-selected', 'true')
-  await detail.getByRole('tab', { name: '标签', exact: true }).click()
+  await expect(detail.getByRole('tab', { name: '标签', exact: true })).toHaveAttribute('aria-selected', 'true')
   await expect(cards).toHaveCount(1)
   await expect(cards.first()).toContainText('客户201')
   await expect(cards.first()).not.toContainText('第二张型号')
+  await cards.first().getByRole('button', { name: '打印', exact: true }).click()
+  await expect.poll(async () => app.evaluate(() => global.labelProof.length)).toBe(4)
+  const switchedPrint = await app.evaluate(() => global.labelProof.at(-1))
+  assert.equal(switchedPrint.orderId, '20261115201')
+  assert.equal(switchedPrint.fields[0], '客户201')
+  await app.evaluate(() => global.finishLabelPrint(true))
+  await expect(search).toBeEnabled()
+  await search.fill('不存在的标签客户')
+  await expect(page.locator('.history-list')).toContainText('没有匹配的订单')
+  await search.fill('')
+  await expect(page.locator('.summary-item')).toHaveCount(100)
+  await expect(detail.getByRole('tab', { name: '标签', exact: true })).toHaveAttribute('aria-selected', 'true')
+  // Direct list clicks must retain each of the three tabs and update its data.
+  for (const name of ['标签', '生产单', '销售单']) {
+    await detail.getByRole('tab', { name, exact: true }).click()
+    for (const id of ['20261115202', '20261115201']) {
+      await page.locator('.summary-item').filter({ hasText: id }).click()
+      await expect(detail.getByRole('tab', { name, exact: true })).toHaveAttribute('aria-selected', 'true')
+      if (name === '标签') await expect(cards.first()).toContainText(id.endsWith('202') ? '客户202' : '客户201')
+      else await expect(detail.locator('.document-number')).toContainText(id)
+    }
+  }
+  await detail.getByRole('tab', { name: '标签', exact: true }).click()
+  await page.locator('.history-list .el-pager li').filter({ hasText: /^2$/ }).click()
+  await expect(page.locator('.history-list .el-pager .is-active')).toHaveText('2')
+  await expect(detail.getByRole('tab', { name: '标签', exact: true })).toHaveAttribute('aria-selected', 'true')
+  const selectedClient = await page.locator('.summary-item.selected > span').last().innerText()
+  await expect(cards.first()).toContainText(selectedClient)
   await search.fill('LABEL-HISTORY')
+  await expect(cards).toHaveCount(3)
+  await expect(detail.getByRole('tab', { name: '标签', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await detail.getByRole('tab', { name: '销售单', exact: true }).click()
   await expect(detail.locator('.document-number')).toContainText('LABEL-HISTORY')
   await detail.getByRole('button', { name: '删除', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: '删除订单', exact: true })

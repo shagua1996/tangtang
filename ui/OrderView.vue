@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { watch } from 'vue'
 import OrderDocument from './OrderDocument.vue'
 import LabelDocument from './LabelDocument.vue'
 const props = defineProps<{
   order: any
   rows: any[]
   editable?: boolean
+  historyEditable?: boolean
   busy?: boolean
 }>()
 const emit = defineEmits<{
@@ -14,11 +15,11 @@ const emit = defineEmits<{
   tabChange: [tab: string]
   delete: []
 }>()
-const tab = ref<'sale' | 'production' | 'label'>('sale')
+const tab = defineModel<'sale' | 'production' | 'label'>('tab', { default: 'sale' })
 watch(
   () => props.order.orderId,
   () => {
-    tab.value = 'sale'
+    if (props.editable) tab.value = 'sale'
   },
 )
 watch(tab, (value) => emit('tabChange', value), { immediate: true })
@@ -38,7 +39,7 @@ watch(tab, (value) => emit('tabChange', value), { immediate: true })
           :order="order"
           :rows="rows"
           :kind="tab"
-          :editable="editable && tab === 'sale'"
+          :editable="(editable || historyEditable) && tab === 'sale'"
           :busy="busy"
         />
       </div>
@@ -46,7 +47,7 @@ watch(tab, (value) => emit('tabChange', value), { immediate: true })
         <el-button type="primary" :disabled="busy" @click="emit('print', tab)"
           >打印</el-button
         ><el-button
-          v-if="editable"
+          v-if="editable || (historyEditable && tab === 'sale')"
           type="primary"
           :disabled="busy"
           @click="emit('save')"

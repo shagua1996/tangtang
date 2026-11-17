@@ -51,9 +51,10 @@ async function main() {
   const labelMemory = await app.evaluate(({ app }) => app.getAppMetrics().map(p => ({ type: p.type, workingSetKiB: p.memory.workingSetSize })))
   const switchStarted = Date.now()
   await page.locator('.history-tools input[type="text"]').fill('客户201')
-  await expect(page.locator('.history-detail .document-number')).toContainText('20261115201')
-  await expect(page.locator('.history-detail .document-line')).toHaveCount(1)
-  await expect(page.locator('.history-detail .document-label')).toHaveCount(0)
+  await expect(page.locator('.history-detail').getByRole('tab', { name: '标签', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.locator('.history-detail .document-label')).toHaveCount(1)
+  await expect(page.locator('.history-detail .document-label')).toContainText('客户201')
+  await expect(page.locator('.history-detail .document-label')).not.toContainText('MODEL-10000')
   const labelSwitchMs = Date.now() - switchStarted
   const report = { passed: true, rows: 10000, searchAndFullRenderMs: elapsedMs, labelRenderMs, labelSwitchMs, labelScroll, labelMemory, labelWorkingSetMiB: labelMemory.reduce((sum, p) => sum + p.workingSetKiB, 0) / 1024, finalLinePresent: true, noDetailPagination: true, scroll, memory, workingSetMiB: memory.reduce((sum, p) => sum + p.workingSetKiB, 0) / 1024, caveat: 'Single run, warm cache, sampled process working sets; not a continuous memory peak or minimum-machine guarantee.' }
   const out = path.join(root, 'test-results/coverage-2026-11-17/large-order.json')

@@ -106,7 +106,7 @@ async function main() {
     }),
   )
   const proof = await app.evaluate(() => global.printProof)
-  assert.equal(proof[0].rows, 3)
+  assert.equal(proof[0].rows, 6)
   assert.equal(proof[1].rows, 10000)
   assert.equal(proof[1].lastRow, true)
   assert.equal(proof[2].rows, 0)

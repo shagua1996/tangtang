@@ -200,18 +200,35 @@ class Repository {
           .get(orderId)?.n || 0,
     }))()
   }
-  saveOrderDetail({ orderId, detailForm }) {
+  saveOrderDetail({ orderId, detailForm, orderForm }) {
     return this.db.transaction(() => {
       object(detailForm, '订单详情')
       const row = this.db
-        .prepare('SELECT header FROM orders WHERE order_id=?')
+        .prepare('SELECT header,summary FROM orders WHERE order_id=?')
         .get(identifier(orderId))
       if (!row) throw new Error('订单不存在')
       const header = parse(row.header)
       header.detailForm = detailForm
+      const summary = parse(row.summary)
+      if (orderForm !== undefined) {
+        object(orderForm, '订单资料')
+        for (const key of ['dealerName', 'dealerAddress', 'call', 'clientName', 'clientAddress', 'deliveryDate', 'orderNote']) {
+          if (!Object.hasOwnProperty.call(orderForm, key)) continue
+          const value = orderForm[key]
+          if (value != null && typeof value !== 'string' && typeof value !== 'number' && !(key === 'deliveryDate' && value instanceof Date))
+            throw new Error('订单资料字段无效：' + key)
+          header.orderForm[key] = value
+        }
+        summary.orderForm = header.orderForm
+        this.db.prepare('DELETE FROM order_search WHERE order_id=?').run(orderId)
+        const insert = this.db.prepare('INSERT INTO order_search VALUES(?,?,?)')
+        Object.values(header.orderForm).forEach((value, index) =>
+          insert.run(orderId, index, value == null ? '' : value.toString().toUpperCase()),
+        )
+      }
       this.db
-        .prepare('UPDATE orders SET header=? WHERE order_id=?')
-        .run(json(header), orderId)
+        .prepare('UPDATE orders SET header=?,summary=? WHERE order_id=?')
+        .run(json(header), json(summary), orderId)
       return true
     })()
   }

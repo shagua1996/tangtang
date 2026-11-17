@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { computed, ref, shallowRef, watch, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { formatDate } from '../domain/business'
+import { DEFAULT_DETAIL, clone, formatDate } from '../domain/business'
 import OrderView from './OrderView.vue'
-const emit = defineEmits<{ deleted: [id: string] }>()
+const emit = defineEmits<{
+  deleted: [id: string]
+  saved: [order: { orderId: string; detailForm: any; orderForm: any }]
+}>()
 const search = ref(''),
   summaries = ref<any[]>([]),
   total = ref(0),
   page = ref(1),
-  selected = shallowRef<any>(null),
+  selected = ref<any>(null),
   selectedId = ref(''),
   rows = shallowRef<any[]>([]),
   busy = ref(false),
@@ -17,6 +20,8 @@ const search = ref(''),
   listError = ref(''),
   detailError = ref('')
 const checkedIds = ref<string[]>([])
+// Keep the chosen tab while order details unmount during loading or empty searches.
+const activeTab = ref<'sale' | 'production' | 'label'>('sale')
 const selectionLocked = computed(
   () => busy.value || actionBusy.value || !!listError.value,
 )
@@ -74,7 +79,11 @@ async function select(id: string) {
       cache.set(key, result)
     }
     if (seq !== detailRequest) return
-    selected.value = result.header
+    selected.value = {
+      ...result.header,
+      orderForm: clone(result.header.orderForm),
+      detailForm: { ...DEFAULT_DETAIL, ...result.header.detailForm },
+    }
     rows.value = result.lines.items
   } catch (e) {
     if (seq === detailRequest) detailError.value = errorText(e)
@@ -182,10 +191,32 @@ async function removeOrders(ids: string[], batch: boolean) {
     actionBusy.value = false
   }
 }
+async function saveDetail() {
+  const orderId = selected.value.orderId
+  const detailForm = JSON.parse(JSON.stringify(selected.value.detailForm))
+  const orderForm = clone(selected.value.orderForm)
+  await window.tangtang.saveOrderDetail({ orderId, detailForm, orderForm })
+  cache.delete(orderId)
+  summaries.value = summaries.value.map(item => item.orderId === orderId ? { ...item, orderForm: clone(orderForm) } : item)
+  emit('saved', { orderId, detailForm, orderForm })
+}
+async function save() {
+  if (actionBusy.value || detailBusy.value || !selected.value) return
+  actionBusy.value = true
+  try {
+    await saveDetail()
+    ElMessage.success('订单已保存')
+  } catch (e) {
+    ElMessage.error(errorText(e))
+  } finally {
+    actionBusy.value = false
+  }
+}
 async function print(kind: string, itemIndex?: number) {
   if (actionBusy.value || !selected.value) return
   actionBusy.value = true
   try {
+    if (kind === 'sale') await saveDetail()
     await window.tangtang.printOrder({
       orderId: selected.value.orderId,
       kind,
@@ -310,10 +341,13 @@ defineExpose({
       >
       <template v-if="selected"
         ><OrderView
+          v-model:tab="activeTab"
+          history-editable
           :busy="actionBusy || detailBusy || !!detailError"
           :order="selected"
           :rows="rows"
           @print="print"
+          @save="save"
           @delete="remove"
         />
       </template>
