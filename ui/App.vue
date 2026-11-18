@@ -402,7 +402,7 @@ onMounted(init)
                     v-model="hole.sizeNote"
                     maxlength="30"
                     show-word-limit
-                    placeholder="填写尺寸或工艺备注"
+                    placeholder="填写尺寸或工艺备注，将在生产单明细和标签中展示"
                 /></el-form-item>
                 <div class="calc-actions">
                   <el-button @click="reset">重置</el-button

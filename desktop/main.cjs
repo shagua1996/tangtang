@@ -297,7 +297,10 @@ else {
       },
     })
     protect(mainWindow)
-    mainWindow.once('ready-to-show', () => mainWindow.show())
+    mainWindow.once('ready-to-show', () => {
+      mainWindow.maximize()
+      mainWindow.show()
+    })
     await load(mainWindow)
   })
   app.on('window-all-closed', () => app.quit())
