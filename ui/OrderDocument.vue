@@ -81,7 +81,12 @@ const detailGroups = [
         </tr>
         <template v-if="kind === 'production'">
           <tr>
-            <th colspan="11">备注：</th>
+            <th colspan="11">
+              <div class="document-field">
+                <span>备注：</span>
+                <span class="document-note-value">{{ order.orderForm.orderNote }}</span>
+              </div>
+            </th>
           </tr>
           <tr>
             <th rowspan="2">序号</th>

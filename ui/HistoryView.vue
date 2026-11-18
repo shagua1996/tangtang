@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed, ref, shallowRef, watch, onMounted, onBeforeUnmount } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { computed, ref, shallowRef, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ElMessage, ElMessageBox, ElSelect } from 'element-plus'
 import { DEFAULT_DETAIL, clone, formatDate } from '../domain/business'
 import OrderView from './OrderView.vue'
+const props = defineProps<{ customersAvailable?: boolean }>()
+const customerArrow = ElSelect.props.suffixIcon.default
 const emit = defineEmits<{
   deleted: [id: string]
   saved: [order: { orderId: string; detailForm: any; orderForm: any }]
@@ -20,6 +22,93 @@ const search = ref(''),
   listError = ref(''),
   detailError = ref('')
 const checkedIds = ref<string[]>([])
+const clientName = ref(''), customerSearch = ref(''), customerPage = ref(1), customerTotal = ref(0)
+const customers = ref<{ name: string }[]>([]), customerBusy = ref(false), customerError = ref('')
+let customerRequest = 0, customerTimer: ReturnType<typeof setTimeout> | undefined
+const customerOpen = ref(false), customerTrigger = ref<any>(), customerSearchInput = ref<any>()
+const customerPicker = ref<HTMLElement>()
+function closeCustomers() {
+  customerOpen.value = false
+  nextTick(() => customerTrigger.value?.$el?.focus())
+}
+function customerKeys(event: KeyboardEvent) {
+  if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return
+  const buttons = Array.from(customerPicker.value?.querySelectorAll<HTMLButtonElement>('.customer-tools > button:not(:disabled), .customer-name:not(:disabled)') || [])
+  if (!buttons.length) return
+  event.preventDefault()
+  const index = buttons.indexOf(document.activeElement as HTMLButtonElement)
+  buttons[(index + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length].focus()
+}
+function customerEscape(event: KeyboardEvent) {
+  if (customerOpen.value && event.key === 'Escape') {
+    event.stopPropagation()
+    closeCustomers()
+  }
+}
+watch(customerOpen, open => {
+  clearTimeout(customerTimer)
+  ++customerRequest
+  if (open) {
+    customerSearch.value = ''
+    // Resetting the query runs its synchronous watcher; discard that debounce
+    // before loading immediately so it cannot later reset a newly chosen page.
+    clearTimeout(customerTimer)
+    customerPage.value = 1
+    loadCustomers()
+  }
+})
+async function loadCustomers(): Promise<void> {
+  if (!props.customersAvailable) return
+  const seq = ++customerRequest
+  customerBusy.value = true
+  customerError.value = ''
+  try {
+    const result = await window.tangtang.listCustomers({ search: customerSearch.value.trim(), page: customerPage.value, pageSize: 50 })
+    if (seq !== customerRequest) return
+    customerTotal.value = result.total
+    if (customerPage.value > 1 && !result.items.length) {
+      customerPage.value = Math.max(1, Math.ceil(result.total / 50))
+      return loadCustomers()
+    }
+    customers.value = result.items
+  } catch (error) {
+    if (seq === customerRequest) customerError.value = errorText(error)
+  } finally {
+    if (seq === customerRequest) customerBusy.value = false
+  }
+}
+watch(customerSearch, () => {
+  ++customerRequest
+  customerBusy.value = true
+  clearTimeout(customerTimer)
+  if (customerOpen.value) customerTimer = setTimeout(() => { customerPage.value = 1; loadCustomers() }, 300)
+}, { flush: 'sync' })
+function chooseCustomer(name: string) {
+  if (actionBusy.value) return
+  closeCustomers()
+  if (clientName.value === name) return
+  selectedId.value = ''
+  clientName.value = name
+}
+async function removeCustomer(name: string) {
+  if (actionBusy.value) return
+  customerOpen.value = false
+  actionBusy.value = true
+  try {
+    await ElMessageBox.confirm(`确定删除客户“${name}”的名称记录吗？该名称将从客户列表和输入候选中移除，已有订单及订单中的客户名称不受影响。`, '删除客户名称', {
+      type: 'warning', confirmButtonText: '确认删除', cancelButtonText: '取消', autofocus: false, closeOnClickModal: false,
+    })
+    await window.tangtang.deleteCustomer({ name })
+    if (clientName.value === name) {
+      selectedId.value = ''
+      clientName.value = ''
+    }
+    await loadCustomers()
+    ElMessage.success('客户名称已删除，已有订单保留')
+  } catch (error) {
+    if (error !== 'cancel' && error !== 'close') ElMessage.error(errorText(error))
+  } finally { actionBusy.value = false; nextTick(() => customerTrigger.value?.$el?.focus()) }
+}
 // Keep the chosen tab while order details unmount during loading or empty searches.
 const activeTab = ref<'sale' | 'production' | 'label'>('sale')
 const selectionLocked = computed(
@@ -105,6 +194,7 @@ async function load(): Promise<void> {
       page: page.value,
       pageSize: 100,
       search: search.value.trim(),
+      ...(clientName.value ? { clientName: clientName.value } : {}),
     })
     if (seq !== request) return
     total.value = data.total
@@ -130,7 +220,7 @@ async function load(): Promise<void> {
     if (seq === request) busy.value = false
   }
 }
-watch(search, () => {
+watch([search, clientName], () => {
   ++request
   ++detailRequest
   selected.value = null
@@ -205,6 +295,7 @@ async function save() {
   actionBusy.value = true
   try {
     await saveDetail()
+    await Promise.all([loadCustomers(), load()])
     ElMessage.success('订单已保存')
   } catch (e) {
     ElMessage.error(errorText(e))
@@ -215,29 +306,35 @@ async function save() {
 async function print(kind: string, itemIndex?: number) {
   if (actionBusy.value || !selected.value) return
   actionBusy.value = true
+  const orderId = selected.value.orderId
+  let saved = false
   try {
-    if (kind === 'sale') await saveDetail()
+    if (kind === 'sale') { await saveDetail(); saved = true }
     await window.tangtang.printOrder({
-      orderId: selected.value.orderId,
+      orderId,
       kind,
       itemIndex,
     })
   } catch (e) {
     ElMessage.error(errorText(e))
   } finally {
+    if (saved) await Promise.all([loadCustomers(), load()])
     actionBusy.value = false
   }
 }
-onMounted(load)
+onMounted(() => { load(); document.addEventListener('keydown', customerEscape, true) })
 onBeforeUnmount(() => {
+  document.removeEventListener('keydown', customerEscape, true)
   clearTimeout(timer)
+  clearTimeout(customerTimer)
+  ++customerRequest
   ++request
   invalidate()
 })
 defineExpose({
   refresh: () => {
     invalidate()
-    return load()
+    return Promise.all([load(), loadCustomers()])
   },
 })
 </script>
@@ -245,9 +342,35 @@ defineExpose({
   <div class="history-layout">
     <aside class="history-list panel">
       <div class="history-tools">
+        <el-alert v-if="!customersAvailable" title="客户列表暂不可用，请重启应用。仍可搜索订单。" type="warning" :closable="false" />
         <h3>
           订单记录 <span class="count">{{ total }}</span>
         </h3>
+        <el-popover role="dialog" v-if="customersAvailable" :visible="customerOpen" trigger="click" placement="bottom-start" :width="300" popper-class="customer-popper" :show-arrow="false" :persistent="false" @update:visible="customerOpen = $event" @after-enter="customerSearchInput?.focus()">
+          <template #reference>
+            <el-button ref="customerTrigger" class="customer-trigger" :disabled="actionBusy" aria-label="按客户筛选订单" aria-haspopup="dialog" :aria-expanded="customerOpen" @keydown.down.prevent="customerOpen = true">
+              <span :title="clientName || '全部客户'">{{ clientName || '全部客户' }}</span>
+              <el-icon class="el-select__caret" :class="{ 'is-reverse': customerOpen }" aria-hidden="true"><component :is="customerArrow" /></el-icon>
+            </el-button>
+          </template>
+          <div class="customer-picker" ref="customerPicker" @keydown="customerKeys">
+            <div class="customer-tools">
+              <h3>客户列表 <span class="count">{{ customerTotal }}</span></h3>
+              <el-input ref="customerSearchInput" v-model="customerSearch" clearable placeholder="搜索客户名称" aria-label="搜索客户名称" :disabled="actionBusy" />
+              <el-button :type="!clientName ? 'primary' : 'default'" :disabled="actionBusy" @click="chooseCustomer('')">全部客户</el-button>
+            </div>
+            <el-alert v-if="customerError" :title="customerError" type="error" :closable="false" />
+            <el-button v-if="customerError" link @click="loadCustomers">重新加载客户</el-button>
+            <div class="customer-rows" v-loading="customerBusy">
+              <div v-for="customer in customers" :key="customer.name" class="customer-item" :class="{ selected: clientName === customer.name }">
+                <button class="customer-name" :disabled="actionBusy || customerBusy" :title="customer.name" :aria-pressed="clientName === customer.name" @click="chooseCustomer(customer.name)">{{ customer.name }}</button>
+                <el-button link :disabled="actionBusy || customerBusy" :aria-label="'删除客户：' + customer.name" @click.stop="removeCustomer(customer.name)">删除</el-button>
+              </div>
+              <div v-if="!customers.length && !customerBusy && !customerError" class="empty-state">{{ customerSearch.trim() ? '没有匹配的客户' : '暂无客户记录' }}</div>
+            </div>
+            <el-pagination small layout="prev,pager,next" :pager-count="5" :total="customerTotal" :page-size="50" :current-page="customerPage" :disabled="customerBusy || actionBusy" @current-change="customerPage = $event; loadCustomers()" />
+          </div>
+        </el-popover>
         <el-input
           v-model="search"
           clearable
@@ -316,7 +439,7 @@ defineExpose({
           v-if="!summaries.length && !busy && !listError"
           class="empty-state"
         >
-          {{ search.trim() ? '没有匹配的订单' : '暂无订单记录' }}
+          {{ search.trim() || clientName ? '没有匹配的订单' : '暂无订单记录' }}
         </div>
       </div>
       <el-pagination

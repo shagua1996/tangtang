@@ -2,6 +2,8 @@
 const { parentPort, workerData } = require('worker_threads')
 const { Repository } = require('./database.cjs')
 const allowed = new Set([
+  'listCustomers',
+  'deleteCustomer',
   'listOrders',
   'getOrderHeader',
   'listOrderItems',

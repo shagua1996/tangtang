@@ -25,8 +25,10 @@ import VirtualTable from './VirtualTable.vue'
 import OrderView from './OrderView.vue'
 import HistoryView from './HistoryView.vue'
 import RecentOrderInput from './RecentOrderInput.vue'
+import CustomerInput from './CustomerInput.vue'
 import { supportsRecentOrderInputs } from './recent-input-capability'
 const recentOrderInputsAvailable = ref(false)
+const customersAvailable = ref(false)
 const page = ref('calculate'),
   ready = ref(false),
   initializing = ref(true),
@@ -78,6 +80,9 @@ async function init() {
     recentOrderInputsAvailable.value =
       supportsRecentOrderInputs(window.tangtang) &&
       status.capabilities?.recentOrderInputs === true
+    customersAvailable.value = status.capabilities?.customers === true &&
+      typeof window.tangtang.listCustomers === 'function' &&
+      typeof window.tangtang.deleteCustomer === 'function'
     needsMigration.value = status.needsMigration
     if (!status.ready) {
       setupError.value = status.error || ''
@@ -481,6 +486,7 @@ onMounted(init)
           />
         </section>
         <HistoryView
+          :customers-available="customersAvailable"
           v-if="historyOpened"
           v-show="page === 'history'"
           ref="history"
@@ -562,6 +568,7 @@ onMounted(init)
         show-icon
         style="margin-bottom: 16px"
       />
+      <el-alert v-if="!customersAvailable" title="客户列表暂不可用，请重启应用。仍可手动输入客户名称。" type="warning" :closable="false" style="margin-bottom: 16px" />
       <el-form label-position="top" class="order-form"
         ><el-form-item
           v-for="[key, label] in orderFields"
@@ -572,7 +579,11 @@ onMounted(init)
             v-if="key === 'deliveryDate'"
             v-model="orderForm[key]"
             type="date"
-            placeholder="选择日期" /><RecentOrderInput
+            placeholder="选择日期" /><CustomerInput
+            v-else-if="key === 'clientName'"
+            v-model.trim="orderForm[key]"
+            :available="customersAvailable"
+            :disabled="busy" /><RecentOrderInput
             v-else-if="['dealerName', 'dealerAddress', 'call'].includes(key)"
             v-model.trim="orderForm[key]"
             :field="key"

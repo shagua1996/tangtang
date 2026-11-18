@@ -193,7 +193,7 @@ ipcMain.on('tangtang:printFailed', (event, message) => {
   if (activePrint?.id === event.sender.id)
     activePrint.finish(new Error(String(message)))
 })
-bind('getStatus', () => ({ ...status, initializing, capabilities: { recentOrderInputs: true } }))
+bind('getStatus', () => ({ ...status, initializing, capabilities: { recentOrderInputs: true, customers: true } }))
 bind('initializeEmpty', async () =>
   setup(async () => {
     const answer = await dialog.showMessageBox(mainWindow, {
@@ -216,6 +216,7 @@ bind('selectLegacyDirectory', async () => {
   return setup(() => runMigration(selection.filePaths[0]))
 })
 for (const name of [
+  'listCustomers',
   'getOrderHeader',
   'listOrderItems',
   'getSettings',
@@ -231,6 +232,7 @@ bind('listOrders', (_, args) => {
   return args?.search ? search(args) : reader.call('listOrders', args)
 })
 for (const name of [
+  'deleteCustomer',
   'createOrder',
   'saveOrderDetail',
   'deleteOrder',

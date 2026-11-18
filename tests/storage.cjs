@@ -17,7 +17,7 @@ async function main() {
     assert.equal(repo.listOrderItems({orderId: original.orderId}).items[0].singlePrice, 0.1)
     assert.equal(repo.listOrderItems({orderId: original.orderId}).items[0].customDate.getTime(), 5)
     assert.equal(repo.listOrders({search:original.orderForm.deliveryDate.toString()}).total,1)
-    assert.equal(repo.db.pragma('user_version',{simple:true}),1)
+    assert.equal(repo.db.pragma('user_version',{simple:true}),2)
     assert.equal(repo.db.pragma('journal_mode',{simple:true}),'wal')
     assert.equal(repo.db.pragma('synchronous',{simple:true}),2)
     assert.equal(repo.getOrderHeader(original.orderId).sizeList, undefined)
@@ -77,7 +77,7 @@ async function main() {
     repo.close(); repo=null
     repo=new Repository(path.join(dir,'test.sqlite'))
     assert.equal(repo.getOrderHeader('BIG').itemCount,601)
-    assert.equal(fs.readdirSync(dir).filter(name=>name.startsWith('test.sqlite.before-schema-1-')).length,1)
+    assert.equal(fs.readdirSync(dir).filter(name=>name.startsWith('test.sqlite.before-schema-2-')).length,1)
     repo.db.pragma('user_version=999');repo.close();repo=null
     assert.throws(()=>new Repository(path.join(dir,'test.sqlite')),/更高版本/)
     const legacy=path.join(dir,'legacy'); fs.mkdirSync(legacy)

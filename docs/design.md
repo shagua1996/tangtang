@@ -23,7 +23,9 @@ UI 通过 context isolation 下有限 preload 接口访问能力，不直接访�
 | nextOrderNumber | `{date,index}` → `{no,index}`，只碰撞递增 |
 | createOrder | 完整订单含明细 → orderId |
 | saveOrderDetail | `{orderId,detailForm,orderForm?}` → 完成状态；可选orderForm更新销售表头六项及整单备注orderNote，订单头、摘要、搜索索引同事务提交 |
-| listOrders | `{page,pageSize,search}` → items、过滤 total、page、pageSize |
+| listOrders | `{page,pageSize,search,clientName?}` → items、过滤 total、page、pageSize；客户精确筛选与综合搜索取交集 |
+| listCustomers | `{page,pageSize,search}` → `{items:[{name}],total,page,pageSize}`；默认/最多50条，输入候选请求20条，名称子串按字面量匹配 |
+| deleteCustomer | `{name}` → 本次逻辑删除数量；只隐藏客户名称，不改动订单内容或关联 |
 | getOrderHeader | orderId → 不含 sizeList 的头及 itemCount |
 | listOrderItems | `{orderId,offset,limit}` → 当批 items 和 total |
 | deleteOrder | orderId → 删除完成状态 |
@@ -33,6 +35,12 @@ UI 通过 context isolation 下有限 preload 接口访问能力，不直接访�
 
 ## 迁移、事务与恢复
 
+2026-11-18 客户需求新增 schema 2：`customers(name,last_used,is_deleted)` 记录客户记忆，`order_customers(order_id,customer_name)` 保存归属，客户名称/订单编号组合索引支持筛选。订单删除级联清理归属而保留客户。名称使用 JS trim 后精确比较；创建订单或客户名称实际变化时，与订单同事务记忆/恢复；普通保存、查看、打印不恢复删除标记。
+
+升级前使用 VACUUM INTO 生成 `.before-schema-2-<时间>.sqlite` 一致性备份；在一次事务内按订单编号每批500条读取订单头回填，不读取明细。成功后更新 user_version 和 metadata 为2；异常回滚并关闭连接。回填仅升级时执行，重启不复活被删名称。旧 NeDB 导入通过 createOrder 自动建立客户及关联，保留原订单字段及哈希验证。
+
+`getStatus.capabilities.customers` 与 preload 方法存在性同时检查，不支持时仍可手动输入和原综合搜索。客户查询使用 reader；原综合搜索继续使用独立 searcher，彼此不取消。界面客户查询、订单查询各用独立请求序号丢弃过期结果。
+
 新库放在 app.getPath('userData')/db，不相对安装目录写库。旧来源是 src/renderer/lib/nedb.js:19 的 ../../Tang/*.db；除自动发现外支持目录选择。先复制旧文件，原库只读；逐行流式读取副本，按 NeDB 日志规则处理同 _id 更新、删除、索引元数据与日期编码，不把百万明细装入渲染进程。
 
 迁移事务保存订单、明细、计算记录、设置及未知旧字段，完整快照用于比较。核对数量、顺序、编号、日期、金额、订单头和明细字段；全部一致才提交完成标记。损坏 JSON、结构错误、主键冲突立即停止并回滚，提示文件及原因，保留备份。不得跳过坏行、覆盖已有目标数据或将失败后的空库当作迁移成功。重启依据已提交标记防止重复导入；失败可在处理源数据后重试。
@@ -40,6 +48,8 @@ UI 通过 context isolation 下有限 preload 接口访问能力，不直接访�
 迁移仅为升级流程，不新增通用导入导出。卸载不自动删除用户数据。活跃 SQLite 的 WAL 一致性必须由维护流程保证，不把简单复制运行中数据库称作可靠备份功能。
 
 ## 页面与状态
+
+2026-11-18客户交互最终调整：历史保持订单列表/详情两栏，客户入口位于订单列表标题下、综合搜索上方。使用受控Popover承载搜索、全部客户、50条分页候选和删除按钮，取消独立客户栏。打开重置候选搜索/页码并查询；选择后关闭；删除前关闭并弹出确认，结束后恢复触发框焦点。搜索防抖与请求序号继续复用，数据库及IPC接口不变。弹层限高、列表内部滚动；客户触发框32px与输入框一致，支持键盘选择和Esc关闭。
 
 四个页面采用浅灰底、白色工作区、深绿色主操作，最小 1024×600。导航清晰固定；宽表在工作区内滚动，所有页面有空态、加载态及失败反馈。
 

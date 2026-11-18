@@ -15,8 +15,8 @@ fs.symlinkSync(path.join(root, 'node_modules'), path.join(temporary, 'node_modul
 const oldPreload = path.join(temporary, 'desktop/preload.cjs')
 const entry = path.join(temporary, 'desktop/main.cjs')
 const staleMain = process.argv.includes('--old-main')
-const removeMethods = source => source.replace(/^\s*'(?:getRecentOrderInputs|rememberOrderInput|deleteRecentOrderInput)',\r?\n/gm, '')
-if(staleMain) fs.writeFileSync(entry, removeMethods(fs.readFileSync(entry,'utf8')).replace(', capabilities: { recentOrderInputs: true }',''))
+const removeMethods = source => source.replace(/^\s*'(?:getRecentOrderInputs|rememberOrderInput|deleteRecentOrderInput|listCustomers|deleteCustomer)',\r?\n/gm, '')
+if(staleMain) fs.writeFileSync(entry, removeMethods(fs.readFileSync(entry,'utf8')).replace(/, capabilities: \{[^}]*\}/,''))
 else fs.writeFileSync(oldPreload, removeMethods(fs.readFileSync(oldPreload,'utf8')))
 let app
 async function main() {
@@ -39,11 +39,14 @@ async function main() {
     await new Promise(resolve=>setTimeout(resolve,400))
     assert.equal(await page.locator('.el-message--error').count(),0,'Old preload must not generate error toasts')
     await page.getByText('最近输入暂不可用，请保存当前订单后重启应用。仍可手动输入。',{exact:true}).waitFor()
+    await page.getByText('客户列表暂不可用，请重启应用。仍可手动输入客户名称。',{exact:true}).waitFor()
+    await page.getByPlaceholder('输入或选择客户名称').fill('旧窗口手动客户')
     await page.getByRole('dialog').getByRole('button',{name:'创建订单',exact:true}).click()
     await page.locator('.order-view .document-title').waitFor()
     const orders=await page.evaluate(()=>window.tangtang.listOrders({search:'旧窗口正常输入'}))
     assert.equal(orders.total,1)
     assert.equal(orders.items[0].orderForm.call,'01234567890')
+    assert.equal(orders.items[0].orderForm.clientName,'旧窗口手动客户')
     console.log((staleMain ? 'stale-main' : 'stale-preload') + ': old bridge detected, no error toast, manual order creation preserved')
   } finally { await app?.close() }
 }

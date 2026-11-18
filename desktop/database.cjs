@@ -75,6 +75,9 @@ function recentInput({ field, value }) {
   if (typeof value !== 'string') throw new Error('最近输入必须是文本')
   return { key: 'recent_order_input:' + field, value: value.trim() }
 }
+function customerName(value) {
+  return typeof value === 'string' || typeof value === 'number' ? String(value).trim() : ''
+}
 class Repository {
   constructor(dbPath, options = {}) {
     this.db = new Database(dbPath, {
@@ -83,36 +86,60 @@ class Repository {
     })
     this.db.pragma('foreign_keys = ON')
     const schemaVersion = this.db.pragma('user_version', { simple: true })
-    if (schemaVersion > 1) {
+    if (schemaVersion > 2) {
       this.db.close()
       throw new Error('数据库由更高版本创建，请升级应用')
     }
-    if (!options.readonly) {
-      // A consistent SQLite backup includes committed WAL contents, unlike copying the main file.
-      if (
-        schemaVersion < 1 &&
-        this.db
-          .prepare(
-            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='orders'",
-          )
-          .get()
-      ) {
-        const backupPath = dbPath + '.before-schema-1-' + Date.now() + '.sqlite'
-        this.db.exec("VACUUM INTO '" + backupPath.replace(/'/g, "''") + "'")
+    try {
+      if (!options.readonly) {
+        // A consistent SQLite backup includes committed WAL contents, unlike copying the main file.
+        if (
+          schemaVersion < 2 &&
+          this.db
+            .prepare(
+              "SELECT 1 FROM sqlite_master WHERE type='table' AND name='orders'",
+            )
+            .get()
+        ) {
+          const backupPath = dbPath + '.before-schema-2-' + Date.now() + '.sqlite'
+          this.db.exec("VACUUM INTO '" + backupPath.replace(/'/g, "''") + "'")
+        }
+        this.db.pragma('journal_mode = WAL')
+        this.db.pragma('synchronous = FULL')
+        this.db.transaction(() => {
+          this.db
+            .exec(`CREATE TABLE IF NOT EXISTS orders(order_id TEXT PRIMARY KEY, header TEXT NOT NULL, summary TEXT NOT NULL, item_count INTEGER NOT NULL);
+          CREATE TABLE IF NOT EXISTS order_items(order_id TEXT NOT NULL REFERENCES orders(order_id) ON DELETE CASCADE, position INTEGER NOT NULL, data TEXT NOT NULL, PRIMARY KEY(order_id,position));
+          CREATE TABLE IF NOT EXISTS order_search(order_id TEXT NOT NULL REFERENCES orders(order_id) ON DELETE CASCADE, position INTEGER NOT NULL, value TEXT NOT NULL, PRIMARY KEY(order_id,position));
+          CREATE TABLE IF NOT EXISTS calculations(id TEXT PRIMARY KEY,data TEXT NOT NULL);
+          CREATE TABLE IF NOT EXISTS settings(version TEXT PRIMARY KEY,data TEXT NOT NULL);
+          CREATE TABLE IF NOT EXISTS metadata(key TEXT PRIMARY KEY,value TEXT NOT NULL);
+          CREATE TABLE IF NOT EXISTS customers(name TEXT PRIMARY KEY,last_used INTEGER NOT NULL,is_deleted INTEGER NOT NULL DEFAULT 0);
+          CREATE INDEX IF NOT EXISTS customers_visible_recent ON customers(is_deleted,last_used DESC,name);
+          CREATE TABLE IF NOT EXISTS order_customers(order_id TEXT PRIMARY KEY REFERENCES orders(order_id) ON DELETE CASCADE,customer_name TEXT NOT NULL REFERENCES customers(name));
+          CREATE INDEX IF NOT EXISTS order_customers_name ON order_customers(customer_name,order_id DESC);`)
+          if (schemaVersion < 2) {
+            // Keyset batches keep the upgrade bounded and never read order_items.
+            let after = null
+            while (true) {
+              const batch = after === null
+                ? this.db.prepare('SELECT order_id,header FROM orders ORDER BY order_id LIMIT 500').all()
+                : this.db.prepare('SELECT order_id,header FROM orders WHERE order_id>? ORDER BY order_id LIMIT 500').all(after)
+              if (!batch.length) break
+              for (const row of batch) {
+                const header = parse(row.header)
+                const timestamp = new Date(header.createAt).getTime()
+                this.linkCustomer(row.order_id, customerName(header.orderForm?.clientName), false, Number.isFinite(timestamp) ? timestamp : 0)
+              }
+              after = batch[batch.length - 1].order_id
+            }
+          }
+          this.db.exec("INSERT INTO metadata(key,value) VALUES('schema_version','2') ON CONFLICT(key) DO UPDATE SET value='2'; PRAGMA user_version=2;")
+        })()
       }
-      this.db.pragma('journal_mode = WAL')
-      this.db.pragma('synchronous = FULL')
-      this.db.transaction(() =>
-        this.db
-          .exec(`CREATE TABLE IF NOT EXISTS orders(order_id TEXT PRIMARY KEY, header TEXT NOT NULL, summary TEXT NOT NULL, item_count INTEGER NOT NULL);
-        CREATE TABLE IF NOT EXISTS order_items(order_id TEXT NOT NULL REFERENCES orders(order_id) ON DELETE CASCADE, position INTEGER NOT NULL, data TEXT NOT NULL, PRIMARY KEY(order_id,position));
-        CREATE TABLE IF NOT EXISTS order_search(order_id TEXT NOT NULL REFERENCES orders(order_id) ON DELETE CASCADE, position INTEGER NOT NULL, value TEXT NOT NULL, PRIMARY KEY(order_id,position));
-        CREATE TABLE IF NOT EXISTS calculations(id TEXT PRIMARY KEY,data TEXT NOT NULL);
-        CREATE TABLE IF NOT EXISTS settings(version TEXT PRIMARY KEY,data TEXT NOT NULL);
-        CREATE TABLE IF NOT EXISTS metadata(key TEXT PRIMARY KEY,value TEXT NOT NULL);
-        INSERT INTO metadata(key,value) VALUES('schema_version','1') ON CONFLICT(key) DO NOTHING;
-        PRAGMA user_version=1;`),
-      )()
+    } catch (error) {
+      this.db.close()
+      throw error
     }
     this.insertOrder = this.db.transaction((order) => {
       object(order, '订单')
@@ -146,20 +173,52 @@ class Repository {
           v == null ? '' : v.toString().toUpperCase(),
         ),
       )
+      this.linkCustomer(header.orderId, customerName(header.orderForm.clientName))
       return header.orderId
     })
   }
   createOrder(order) {
     return this.insertOrder(order)
   }
-  listOrders({ page = 1, pageSize = 100, search = '' } = {}) {
+  // Called only inside an order write/upgrade transaction.
+  linkCustomer(orderId, name, remember = true, usedAt = Date.now()) {
+    this.db.prepare('DELETE FROM order_customers WHERE order_id=?').run(orderId)
+    if (!name) return
+    this.db.prepare(`INSERT INTO customers(name,last_used,is_deleted) VALUES(?,?,0)
+      ON CONFLICT(name) DO UPDATE SET last_used=max(customers.last_used,excluded.last_used),
+      is_deleted=CASE WHEN ? THEN 0 ELSE customers.is_deleted END`).run(name, usedAt, remember ? 1 : 0)
+    this.db.prepare('INSERT INTO order_customers(order_id,customer_name) VALUES(?,?)').run(orderId, name)
+  }
+  listCustomers({ page = 1, pageSize = 50, search = '' } = {}) {
+    page = Math.max(1, integer(page, 1, 100000000))
+    pageSize = Math.max(1, integer(pageSize, 50, 50))
+    const term = String(search).trim()
+    const where = ' WHERE is_deleted=0' + (term ? ' AND instr(name,?)>0' : '')
+    const params = term ? [term] : []
+    return this.db.transaction(() => ({
+      items: this.db.prepare('SELECT name FROM customers' + where + ' ORDER BY last_used DESC,name LIMIT ? OFFSET ?').all(...params, pageSize, (page - 1) * pageSize),
+      total: this.db.prepare('SELECT count(*) n FROM customers' + where).get(...params).n,
+      page, pageSize,
+    }))()
+  }
+  deleteCustomer({ name }) {
+    if (typeof name !== 'string' || !name.trim()) throw new Error('客户名称不能为空')
+    return this.db.prepare('UPDATE customers SET is_deleted=1 WHERE name=? AND is_deleted=0').run(name.trim()).changes
+  }
+  listOrders({ page = 1, pageSize = 100, search = '', clientName } = {}) {
     page = Math.max(1, integer(page, 1, 100000000))
     pageSize = Math.max(1, integer(pageSize, 100, 100))
     const term = String(search).toUpperCase()
-    const where = term
-      ? ' WHERE EXISTS(SELECT 1 FROM order_search s WHERE s.order_id=o.order_id AND instr(s.value,?)>0)'
-      : ''
-    const params = term ? [term] : []
+    const filters = [], params = []
+    if (customerName(clientName)) {
+      filters.push('o.order_id IN (SELECT order_id FROM order_customers WHERE customer_name=?)')
+      params.push(customerName(clientName))
+    }
+    if (term) {
+      filters.push('EXISTS(SELECT 1 FROM order_search s WHERE s.order_id=o.order_id AND instr(s.value,?)>0)')
+      params.push(term)
+    }
+    const where = filters.length ? ' WHERE ' + filters.join(' AND ') : ''
     // A read transaction keeps count and page on the same WAL snapshot.
     return this.db.transaction(() => ({
       items: this.db
@@ -208,6 +267,7 @@ class Repository {
         .get(identifier(orderId))
       if (!row) throw new Error('订单不存在')
       const header = parse(row.header)
+      const previousCustomer = customerName(header.orderForm.clientName)
       header.detailForm = detailForm
       const summary = parse(row.summary)
       if (orderForm !== undefined) {
@@ -225,6 +285,8 @@ class Repository {
         Object.values(header.orderForm).forEach((value, index) =>
           insert.run(orderId, index, value == null ? '' : value.toString().toUpperCase()),
         )
+        const nextCustomer = customerName(header.orderForm.clientName)
+        if (nextCustomer !== previousCustomer) this.linkCustomer(orderId, nextCustomer)
       }
       this.db
         .prepare('UPDATE orders SET header=?,summary=? WHERE order_id=?')

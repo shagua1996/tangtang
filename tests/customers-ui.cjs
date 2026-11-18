@@ -1,0 +1,245 @@
+const { _electron: electron, expect } = require('@playwright/test')
+const assert = require('node:assert/strict')
+const fs = require('node:fs'), os = require('node:os'), path = require('node:path')
+const { spawnSync } = require('node:child_process')
+const root = path.resolve(__dirname, '..'), data = fs.mkdtempSync(path.join(os.tmpdir(), 'tangtang-customers-ui-'))
+const env = { ...process.env, TANGTANG_DATA_DIR: data }
+delete env.ELECTRON_RUN_AS_NODE
+delete env.TANGTANG_DEV_URL
+function node(args) {
+  const result = spawnSync(require('electron'), args, { cwd: root, env: { ...env, ELECTRON_RUN_AS_NODE: '1' }, encoding: 'utf8' })
+  assert.equal(result.status, 0, result.stderr)
+}
+node(['tests/seed.cjs', data])
+function sql(statement) {
+  node(['-e', 'const {Repository}=require(process.argv[1]);const r=new Repository(process.argv[2]);r.db.exec(process.argv[3]);r.close()', path.join(root, 'desktop/database.cjs'), path.join(data, 'development-db/tangtang.sqlite'), statement])
+}
+let app
+async function launch() {
+  app = await electron.launch({ args: [root], cwd: root, env })
+  const page = await app.firstWindow()
+  await page.locator('.calculator-content .input-panel h2').waitFor()
+  return page
+}
+async function history(page) {
+  await page.locator('nav').getByRole('button', { name: '历史记录', exact: false }).click()
+  await expect(page.locator('.history-list .customer-trigger')).toBeVisible()
+  await expect(page.locator('.history-layout > aside')).toHaveCount(1)
+  await openCustomers(page)
+}
+async function openCustomers(page) {
+  if ((await page.locator('.customer-trigger').getAttribute('aria-expanded')) !== 'true') {
+    await expect(page.locator('.customer-picker')).toBeHidden()
+    await page.locator('.customer-trigger').click()
+  }
+  await expect(page.locator('.customer-picker')).toBeVisible()
+}
+async function searchCustomers(page, value) {
+  await openCustomers(page)
+  await page.getByRole('textbox', { name: '搜索客户名称', exact: true }).fill(value)
+}
+async function customer(page, name) {
+  await searchCustomers(page, name)
+  await page.locator('.customer-item').getByRole('button', { name, exact: true }).click()
+  await expect(page.locator('.customer-picker')).toBeHidden()
+}
+async function main() {
+  let page = await launch()
+  await history(page)
+  await expect(page.locator('.customer-item')).toHaveCount(50)
+  await expect(page.locator('.summary-item')).toHaveCount(100)
+  await page.getByRole('textbox', { name: '搜索客户名称', exact: true }).press('Escape')
+  await expect(page.locator('.customer-picker')).toBeHidden()
+  await expect(page.locator('.customer-trigger')).toBeFocused()
+  await page.locator('.customer-trigger').press('Enter')
+  await expect(page.getByRole('textbox', { name: '搜索客户名称', exact: true })).toBeFocused()
+  await searchCustomers(page, '客户202')
+  await expect(page.locator('.customer-item')).toHaveCount(1)
+  await page.getByRole('textbox', { name: '搜索客户名称', exact: true }).press('ArrowDown')
+  await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('Enter')
+  await expect(page.locator('.customer-trigger')).toContainText('客户202')
+  await expect(page.locator('.customer-picker')).toBeHidden()
+  await openCustomers(page)
+  await expect(page.getByRole('textbox', { name: '搜索客户名称', exact: true })).toHaveValue('')
+  await expect(page.locator('.customer-item')).toHaveCount(50)
+  await page.getByRole('button', { name: '全部客户', exact: true }).click()
+  await openCustomers(page)
+  await searchCustomers(page, '客户202')
+  await expect(page.locator('.customer-item')).toHaveCount(1)
+  await page.keyboard.press('Escape')
+  await openCustomers(page)
+  await expect(page.locator('.customer-item')).toHaveCount(50)
+  await page.locator('.customer-picker .btn-next').click()
+  await expect(page.locator('.customer-picker .el-pager .is-active')).toHaveText('2')
+  // Give any leftover 300ms search reset time to run: it must not undo pagination.
+  await page.waitForTimeout(400)
+  await expect(page.locator('.customer-picker .el-pager .is-active')).toHaveText('2')
+  await page.keyboard.press('Escape')
+  await openCustomers(page)
+  // Delay one real IPC response to force old/new order queries to complete out of order.
+  await app.evaluate(({ ipcMain }) => {
+    global.originalCustomerOrders = ipcMain._invokeHandlers.get('tangtang:listOrders')
+    global.delayedCustomerStarted = false
+    global.delayedCustomerFinished = false
+    ipcMain.removeHandler('tangtang:listOrders')
+    ipcMain.handle('tangtang:listOrders', async (event, args) => {
+      const result = await global.originalCustomerOrders(event, args)
+      if (args?.clientName === '客户202') {
+        global.delayedCustomerStarted = true
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        global.delayedCustomerFinished = true
+      }
+      return result
+    })
+  })
+  await page.locator('.customer-item').getByRole('button', { name: '客户202', exact: true }).click()
+  await expect.poll(() => app.evaluate(() => global.delayedCustomerStarted)).toBe(true)
+  await openCustomers(page)
+  await page.locator('.customer-item').getByRole('button', { name: '客户201', exact: true }).click()
+  await expect(page.locator('.summary-item')).toHaveCount(1)
+  await expect(page.locator('.summary-item')).toContainText('20261115201')
+  await expect.poll(() => app.evaluate(() => global.delayedCustomerFinished)).toBe(true)
+  await expect(page.locator('.summary-item')).toContainText('20261115201')
+  await app.evaluate(({ ipcMain }) => { ipcMain.removeHandler('tangtang:listOrders'); ipcMain.handle('tangtang:listOrders', global.originalCustomerOrders) })
+  await customer(page, '客户202')
+  await expect(page.locator('.summary-item')).toHaveCount(1)
+  await expect(page.locator('.summary-item')).toContainText('20261115202')
+  await page.locator('.history-detail').getByRole('tab', { name: '标签', exact: true }).click()
+  await searchCustomers(page, '客户201')
+  await expect(page.locator('.customer-item')).toHaveCount(1)
+  await expect(page.locator('.summary-item')).toContainText('20261115202')
+  await page.getByRole('button', { name: '删除客户：客户201', exact: true }).click()
+  await page.getByRole('button', { name: '取消', exact: true }).click()
+  await expect(page.locator('.customer-picker')).toBeHidden()
+  await expect(page.locator('.customer-trigger')).toBeFocused()
+  await expect(page.locator('.summary-item')).toContainText('20261115202')
+  await customer(page, '客户201')
+  await expect(page.locator('.history-detail [role=tab].is-active')).toHaveText('标签')
+  await page.locator('.history-batch-tools').getByText('全选本页', { exact: true }).click()
+  sql("CREATE TRIGGER fail_customer_delete BEFORE UPDATE ON customers BEGIN SELECT RAISE(ABORT,'customer delete failure'); END")
+  await searchCustomers(page, '客户201')
+  await page.getByRole('button', { name: '删除客户：客户201', exact: true }).click()
+  await page.getByRole('button', { name: '确认删除', exact: true }).click()
+  await expect(page.getByText('customer delete failure', { exact: true })).toBeVisible()
+  await expect(page.locator('.summary-item')).toHaveCount(1)
+  await expect(page.locator('.history-selection-count')).toContainText('1')
+  sql('DROP TRIGGER fail_customer_delete')
+  await searchCustomers(page, '客户201')
+  await page.getByRole('button', { name: '删除客户：客户201', exact: true }).click()
+  await page.getByRole('button', { name: '确认删除', exact: true }).click()
+  await expect(page.locator('.customer-picker')).toBeHidden()
+  await expect(page.locator('.summary-item')).toHaveCount(100)
+  await expect(page.locator('.history-selection-count')).toContainText('0')
+  assert.equal((await page.evaluate(() => window.tangtang.listOrders())).total, 202)
+  await app.close()
+  page = await launch()
+  await history(page)
+  await page.getByRole('textbox', { name: '搜索订单', exact: true }).fill('20261115201')
+  await expect(page.locator('.summary-item')).toHaveCount(1)
+  await page.locator('.history-detail').getByRole('button', { name: '确认并保存', exact: true }).click()
+  await expect(page.getByText('订单已保存', { exact: true })).toBeVisible()
+  assert.equal((await page.evaluate(() => window.tangtang.listCustomers({ search: '客户201' }))).total, 0)
+  await app.evaluate(({ app }) => {
+    global.customerPrints = []
+    app.on('browser-window-created', (_, win) => {
+      win.webContents.print = async (_options, callback) => {
+        global.customerPrints.push(await win.webContents.executeJavaScript('document.body.innerText'))
+        callback(true)
+      }
+    })
+  })
+  await page.locator('.history-detail').getByRole('button', { name: '打印', exact: true }).click()
+  await expect.poll(() => app.evaluate(() => global.customerPrints.length)).toBe(1)
+  assert.equal((await page.evaluate(() => window.tangtang.listCustomers({ search: '客户201' }))).total, 0)
+  await page.getByRole('textbox', { name: '搜索订单', exact: true }).fill('')
+  await customer(page, '客户202')
+  await page.locator('.history-detail').getByLabel('客户名称', { exact: true }).fill('改名客户')
+  await page.locator('.history-detail').getByRole('button', { name: '打印', exact: true }).click()
+  await expect.poll(() => app.evaluate(() => global.customerPrints.length)).toBe(2)
+  const print = await app.evaluate(() => global.customerPrints[1])
+  assert.ok(print.includes('20261115202') && print.includes('改名客户'))
+  await expect(page.locator('.summary-item')).toHaveCount(0)
+  assert.equal((await page.evaluate(() => window.tangtang.listCustomers({ search: '改名客户' }))).total, 1)
+  await page.locator('nav').getByRole('button', { name: '尺寸计算', exact: false }).click()
+  const numbers = page.locator('.calculator-form input[type=number]')
+  await numbers.nth(0).fill('900'); await numbers.nth(1).fill('2100'); await numbers.nth(2).fill('150')
+  await page.getByRole('button', { name: '计算并加入明细', exact: true }).click()
+  await page.getByRole('button', { name: '生成生产单和销售单', exact: true }).click()
+  let dialog = page.getByRole('dialog')
+  await dialog.getByPlaceholder('输入或选择客户名称', { exact: true }).fill('改名客户')
+  await page.getByRole('option', { name: '改名客户', exact: true }).click()
+  await expect(dialog.getByPlaceholder('输入或选择客户名称', { exact: true })).toHaveValue('改名客户')
+  await dialog.getByPlaceholder('输入或选择客户名称', { exact: true }).fill('取消客户')
+  await dialog.getByRole('button', { name: '取消', exact: true }).click()
+  assert.equal((await page.evaluate(() => window.tangtang.listCustomers({ search: '取消客户' }))).total, 0)
+  await page.getByRole('button', { name: '生成生产单和销售单', exact: true }).click()
+  dialog = page.getByRole('dialog')
+  await app.evaluate(({ ipcMain }) => {
+    global.originalCustomers = ipcMain._invokeHandlers.get('tangtang:listCustomers')
+    ipcMain.removeHandler('tangtang:listCustomers')
+    ipcMain.handle('tangtang:listCustomers', () => ({ ok: false, error: 'customer candidates unavailable' }))
+  })
+  await dialog.getByPlaceholder('输入或选择客户名称', { exact: true }).fill('客户201')
+  await expect(page.getByText('customer candidates unavailable', { exact: true })).toBeVisible()
+  await dialog.getByRole('button', { name: '创建订单', exact: true }).click()
+  await expect(page.locator('.order-view:visible .document-title')).toBeVisible()
+  await app.evaluate(({ ipcMain }) => { ipcMain.removeHandler('tangtang:listCustomers'); ipcMain.handle('tangtang:listCustomers', global.originalCustomers) })
+  assert.equal((await page.evaluate(() => window.tangtang.listCustomers({ search: '客户201' }))).total, 1)
+  await history(page)
+  await searchCustomers(page, '')
+  await page.getByRole('button', { name: '全部客户', exact: true }).click()
+  await openCustomers(page)
+  await expect(page.locator('.customer-item')).toHaveCount(50)
+  await page.locator('.customer-picker .btn-next').click()
+  await expect(page.locator('.customer-picker .el-pager .is-active')).toHaveText('2')
+  await expect(page.locator('.customer-item')).toHaveCount(50)
+  // More than 10,000 customers in the real database must still render bounded pages.
+  await page.evaluate(async () => {
+    for (let offset = 0; offset < 10000; offset += 100) {
+      await Promise.all(Array.from({ length: 100 }, (_, i) => {
+        const suffix = String(offset + i).padStart(5, '0')
+        return window.tangtang.createOrder({ orderId: 'PERF-' + suffix, orderForm: { clientName: '性能客户' + suffix }, sizeList: [], totalPrice: 0 })
+      }))
+    }
+  })
+  await searchCustomers(page, '性能客户')
+  await expect(page.locator('.customer-picker .count')).toHaveText('10000')
+  await expect(page.locator('.customer-item')).toHaveCount(50)
+  await searchCustomers(page, '性能客户09999')
+  await searchCustomers(page, '性能客户00001')
+  await expect(page.locator('.customer-item')).toHaveCount(1)
+  await expect(page.locator('.customer-item')).toContainText('性能客户00001')
+  await searchCustomers(page, '性能客户')
+  await expect(page.locator('.customer-item')).toHaveCount(50)
+  await page.evaluate(async () => {
+    for (let i = 0; i < 51; i++) await window.tangtang.createOrder({ orderId: 'LAST-' + i, orderForm: { clientName: '尾页客户' + String(i).padStart(2, '0') }, sizeList: [], totalPrice: 0 })
+  })
+  await searchCustomers(page, '尾页客户')
+  await expect(page.locator('.customer-item')).toHaveCount(50)
+  await page.locator('.customer-picker .btn-next').click()
+  await expect(page.locator('.customer-item')).toHaveCount(1)
+  await page.locator('.customer-item').getByRole('button', { name: /^删除客户：/ }).click()
+  await page.getByRole('button', { name: '确认删除', exact: true }).click()
+  await searchCustomers(page, '尾页客户')
+  await expect(page.locator('.customer-picker .el-pager .is-active')).toHaveText('1')
+  await expect(page.locator('.customer-item')).toHaveCount(50)
+  await app.evaluate(({ BrowserWindow }) => { const win = BrowserWindow.getAllWindows()[0]; win.unmaximize(); win.setSize(1024, 600) })
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.customer-picker')).toBeHidden()
+  await page.locator('.customer-trigger').press('Enter')
+  await expect(page.locator('.customer-picker')).toBeVisible()
+  await expect(page.getByRole('textbox', { name: '搜索客户名称', exact: true })).toBeFocused()
+  await page.waitForTimeout(400)
+  await expect(page.locator('.customer-picker')).toBeVisible()
+  await expect.poll(() => page.locator('.customer-popper').evaluate(el => {
+    const rect = el.getBoundingClientRect()
+    return rect.top >= 0 && rect.bottom <= innerHeight && rect.left >= 0 && rect.right <= innerWidth
+  })).toBe(true)
+  const overflow = await page.evaluate(() => ({ width: document.documentElement.scrollWidth - innerWidth, height: document.documentElement.scrollHeight - innerHeight }))
+  assert.ok(overflow.width <= 1 && overflow.height <= 1, JSON.stringify(overflow))
+  fs.mkdirSync(path.join(root, 'test-results'), { recursive: true })
+  await page.screenshot({ path: path.join(root, 'test-results/customers-history.png') })
+  console.log('customers-ui: bounded lists, filtering, deletion/cancel/failure, restart, save/print retention, print-after-rename, creation/cancel, tab and layout passed')
+}
+main().catch(error => { console.error(error); process.exitCode = 1 }).finally(async () => { await app?.close(); fs.rmSync(data, { recursive: true, force: true }) })

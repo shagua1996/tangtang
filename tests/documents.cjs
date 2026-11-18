@@ -91,11 +91,13 @@ async function main() {
       assert.ok(expected[0].length > 0)
       if (tab === '销售单')
         assert.equal(await page.locator('.document-detail-input').count(), 7)
-      if (tab === '生产单')
+      if (tab === '生产单') {
+        assert.equal(await page.locator('.document-table thead tr').nth(2).textContent().then(text => text.replace(/\s/g, '')), '备注：当前销售备注第二行')
         assert.equal(
           await page.locator('.document-table th[rowspan="2"]').count(),
           7,
         )
+      }
       if (tab === '标签') {
         assert.equal(await page.locator('table.document-label,.document-label table').count(), 0)
         assert.equal(await page.locator('.document-label-row').count(), 8)
@@ -137,6 +139,15 @@ async function main() {
     await page.getByRole('button', { name: '确认并保存', exact: true }).click()
     await page.getByText('订单已保存', { exact: true }).waitFor()
     const historySale = await page.evaluate(tableSignature)
+    await page.locator('.history-detail').getByRole('tab', { name: '生产单', exact: true }).click()
+    assert.equal(await page.locator('.history-detail .document-note-value').textContent(), '历史页修改整单备注')
+    const historyProduction = await page.evaluate(tableSignature)
+    await page.locator('.history-detail').getByRole('button', { name: '打印', exact: true }).click()
+    for (let retry = 0; retry < 100; retry++) {
+      if ((await app.evaluate(() => global.documentProof)).length > 3) break
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
+    assert.deepEqual((await app.evaluate(() => global.documentProof))[3], historyProduction, 'Historical production print includes the saved order note')
     await page.locator('nav').getByRole('button', { name: '当前订单', exact: false }).click()
     await page.getByRole('tab', { name: '销售单', exact: true }).click()
     assert.deepEqual(await page.evaluate(tableSignature), historySale, 'History saves must synchronize the current order and preserve identical sales content')
