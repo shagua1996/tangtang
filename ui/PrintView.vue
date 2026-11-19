@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, shallowRef, nextTick } from 'vue'
+import { onMounted, ref, shallowRef, nextTick } from 'vue'
 import OrderDocument from './OrderDocument.vue'
 import LabelDocument from './LabelDocument.vue'
 
@@ -8,20 +8,34 @@ const kind = params.get('kind') || 'sale'
 const order = shallowRef<any>(null)
 const rows = shallowRef<any[]>([])
 const failure = ref('')
-// The restored two-level production header needs more paper space than the flat header.
-const rowsPerSheet = 12
-// Small independent tables bound Chromium's table layout work. All sheets
-// remain in one document and are submitted as one native print job.
-const sheets = computed(() => {
-  const result: { offset: number; rows: any[] }[] = []
-  for (let offset = 0; offset < rows.value.length; offset += rowsPerSheet) {
-    result.push({
-      offset,
-      rows: rows.value.slice(offset, offset + rowsPerSheet),
-    })
+const documentElement = ref<HTMLElement>()
+const sheets = shallowRef<{ offset: number; rows: any[] }[]>([])
+
+function paginateMeasuredRows() {
+  const sections = Array.from(documentElement.value!.querySelectorAll<HTMLElement>('.print-sheet'))
+  const firstLine = sections[0]?.querySelector('.document-line')
+  if (!firstLine) return
+  // A4 portrait minus the two 10mm page margins. Measure with the same
+  // 190mm width and styles used by print, including wrapped production cells.
+  const headerHeight = firstLine.getBoundingClientRect().top - sections[0].getBoundingClientRect().top
+  const availableHeight = 277 * 96 / 25.4 - headerHeight - 2 // collapsed-border/rounding allowance
+  const heights = sections.flatMap(section =>
+    Array.from(section.querySelectorAll('.document-line'), row => row.getBoundingClientRect().height),
+  )
+  const pages: { offset: number; rows: any[] }[] = []
+  let offset = 0
+  let usedHeight = 0
+  for (let index = 0; index < heights.length; index++) {
+    if (index > offset && usedHeight + heights[index] > availableHeight) {
+      pages.push({ offset, rows: rows.value.slice(offset, index) })
+      offset = index
+      usedHeight = 0
+    }
+    usedHeight += heights[index]
   }
-  return result.length ? result : [{ offset: 0, rows: [] }]
-})
+  pages.push({ offset, rows: rows.value.slice(offset) })
+  sheets.value = pages
+}
 
 onMounted(async () => {
   try {
@@ -50,6 +64,15 @@ onMounted(async () => {
     // Commit once after loading all batches, without proxying each line.
     rows.value = loaded
     order.value = header
+    if (kind !== 'label') {
+      // Bounded measurement tables avoid Chromium's excessive layout cost for
+      // a single 10,000-row table. These are replaced before the print request.
+      const batches: { offset: number; rows: any[] }[] = []
+      for (let offset = 0; offset < loaded.length; offset += 100) {
+        batches.push({ offset, rows: loaded.slice(offset, offset + 100) })
+      }
+      sheets.value = batches.length ? batches : [{ offset: 0, rows: [] }]
+    }
     const style = document.createElement('style')
     style.textContent =
       kind === 'label'
@@ -58,6 +81,10 @@ onMounted(async () => {
     document.head.appendChild(style)
     await nextTick()
     await document.fonts.ready
+    if (kind !== 'label') {
+      paginateMeasuredRows()
+      await nextTick()
+    }
     await new Promise((resolve) =>
       requestAnimationFrame(() => requestAnimationFrame(resolve)),
     )
@@ -69,27 +96,26 @@ onMounted(async () => {
 })
 </script>
 <template>
-  <main class="print-document" :class="{ 'label-print-document': kind === 'label' }">
+  <main ref="documentElement" class="print-document" :class="{ 'label-print-document': kind === 'label' }">
     <p v-if="failure">{{ failure }}</p>
     <template v-if="order">
       <LabelDocument v-if="kind === 'label'" :order="order" :item="rows[0]" print-layout />
-      <template v-else
-        ><section
-          v-for="(sheet, index) in sheets"
-          :key="sheet.offset"
-          class="print-sheet"
-        >
+      <template v-else>
+        <section v-for="(sheet, index) in sheets" :key="sheet.offset" class="print-sheet">
           <OrderDocument
             :order="order"
             :rows="sheet.rows"
             :kind="kind === 'production' ? 'production' : 'sale'"
             :offset="sheet.offset"
             :show-footer="index === sheets.length - 1"
-          /></section
-      ></template>
+            print-layout
+          />
+        </section>
+      </template>
     </template>
   </main>
 </template>
 <style scoped>
+.print-document { width: 190mm; padding: 0; }
 .print-document.label-print-document { width: 58mm; padding: 0; margin: 0; }
 </style>

@@ -8,6 +8,7 @@ const root = path.resolve(__dirname, '..'),
   data = fs.mkdtempSync(path.join(os.tmpdir(), 'tangtang-print-')),
   out = path.join(root, 'test-results')
 const env = { ...process.env, TANGTANG_DATA_DIR: data }
+fs.mkdirSync(out, { recursive: true })
 delete env.ELECTRON_RUN_AS_NODE
 delete env.TANGTANG_DEV_URL
 const seed = spawnSync(
@@ -37,7 +38,7 @@ async function main() {
             return
           }
           const proof = await win.webContents.executeJavaScript(
-            '({rows:document.querySelectorAll("tbody tr").length,text:document.body.innerText,kind:new URLSearchParams(location.search).get("kind")})',
+            '({rows:document.querySelectorAll("tbody tr").length,text:document.body.innerText,kind:new URLSearchParams(location.search).get("kind"),orderId:new URLSearchParams(location.search).get("orderId")})',
           )
           if (proof.kind !== 'label' && options.landscape !== false)
             throw new Error('订单必须使用纵向打印参数')
@@ -54,11 +55,12 @@ async function main() {
           if (proof.kind !== 'label' && paper.width >= paper.height)
             throw new Error('订单PDF必须为纵向纸张')
           fileSystem.writeFileSync(
-            pathModule.join(directory, proof.kind + '.pdf'),
+            pathModule.join(directory, proof.orderId.startsWith('PAGINATION-') ? proof.orderId + '-' + proof.kind + '.pdf' : proof.kind + '.pdf'),
             pdf,
           )
           global.printProof.push({
             kind: proof.kind,
+            pages: (pdf.toString('latin1').match(/\/Type\s*\/Page\b/g) || []).length,
             paper,
             rows: proof.rows,
             lastRow: proof.text.includes('LAST-LINE-10000'),
@@ -80,6 +82,22 @@ async function main() {
       limit: 1,
     })
     const header = await window.tangtang.getOrderHeader('20261115202')
+    for (const count of [18, 60, 'WRAPPED']) {
+      await window.tangtang.createOrder({
+        ...header,
+        _id: undefined,
+        orderId: 'PAGINATION-' + count,
+        orderForm: { ...header.orderForm, no: 'PAGINATION-' + count },
+        sizeList: Array.from({ length: count === 'WRAPPED' ? 60 : count }, (_, index) => ({
+          ...sample.items[0],
+          ...(count === 'WRAPPED' && index % 3 === 0 ? {
+            type: '长型号\n第二行\n第三行\n第四行',
+            sizeNote: '第一行备注\n第二行备注\n第三行备注\n第四行备注',
+          } : {}),
+        })),
+        totalPrice: (count === 'WRAPPED' ? 60 : count) * 2000,
+      })
+    }
     await window.tangtang.createOrder({
       ...header,
       _id: undefined,
@@ -92,6 +110,21 @@ async function main() {
       totalPrice: 20000000,
     })
   })
+  for (const count of [18, 60, 'WRAPPED']) {
+    for (const kind of ['sale', 'production']) {
+      await page.evaluate(({ count, kind }) => window.tangtang.printOrder({
+        orderId: 'PAGINATION-' + count, kind,
+      }), { count, kind })
+      const result = await app.evaluate(() => global.printProof.at(-1))
+      assert.equal(result.rows, (count === 'WRAPPED' ? 60 : count) + (kind === 'sale' ? 5 : 0))
+      if (count === 18) assert.equal(result.pages, 1, kind + ': 18 ordinary detail rows fit on one A4 page')
+      else {
+        assert.ok(result.pages > 1, kind + ': long orders still paginate')
+        if (count === 60) assert.ok(result.pages < 5, kind + ': use available paper instead of breaking every 12 rows')
+      }
+    }
+  }
+  const pagination = await app.evaluate(() => global.printProof.splice(0))
   await page.evaluate(() =>
     window.tangtang.printOrder({ orderId: '20261115202', kind: 'sale' }),
   )
@@ -140,6 +173,7 @@ async function main() {
   console.log(
     JSON.stringify({
       passed: true,
+      pagination,
       proof,
       cancellationReleasedWindow: true,
       physicalPrinterTested: false,

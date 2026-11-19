@@ -11,6 +11,7 @@ const props = withDefaults(
     editable?: boolean
     busy?: boolean
     showFooter?: boolean
+    printLayout?: boolean
   }>(),
   { offset: 0, showFooter: true },
 )
@@ -50,7 +51,7 @@ const detailGroups = [
 ]
 </script>
 <template>
-  <article class="order-document" :data-kind="kind">
+  <article class="order-document" :class="{ 'order-print-layout': printLayout }" :data-kind="kind">
     <h2 class="document-title">
       芃悦居木门{{ kind === 'sale' ? '销售单' : '生产单' }}
     </h2>
@@ -263,35 +264,34 @@ const detailGroups = [
   resize: vertical;
   min-height: 40px;
 }
-@media print {
-  .order-document {
-    color: #000;
-    font-size: 14px;
-  }
-  .document-title {
-    font-size: 16px;
-    padding: 0 0 12px;
-  }
-  .document-heading {
-    font-size: 12px;
-    margin-bottom: 8px;
-  }
-  .document-table th,
-  .document-table td {
-    height: auto;
-    padding: 3px 4px;
-    font-size: 12px;
-    line-height: 1.25;
-    border-color: #888;
-    white-space: pre-line;
-    overflow: visible;
-  }
-  .document-table thead {
-    display: table-header-group;
-  }
-  .document-table tr {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
+/* The dedicated print window also uses these styles while measuring page rows. */
+.order-print-layout {
+  color: #000;
+  font-size: 14px;
+}
+.order-print-layout .document-title {
+  font-size: 16px;
+  padding: 0 0 12px;
+}
+.order-print-layout .document-heading {
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.order-print-layout .document-table th,
+.order-print-layout .document-table td {
+  height: auto;
+  padding: 3px 4px;
+  font-size: 12px;
+  line-height: 1.25;
+  border-color: #888;
+  white-space: pre-line;
+  overflow: visible;
+}
+.order-print-layout .document-table thead {
+  display: table-header-group;
+}
+.order-print-layout .document-table tr {
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 </style>

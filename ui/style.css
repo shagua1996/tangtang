@@ -907,13 +907,11 @@ nav button.active {
     overflow: visible;
   }
   .print-sheet {
-    break-after: page;
-    page-break-after: always;
     margin-bottom: 0;
   }
-  .print-sheet:last-child {
-    break-after: auto;
-    page-break-after: auto;
+  .print-sheet + .print-sheet {
+    break-before: page;
+    page-break-before: always;
   }
   .print-sheet table {
     table-layout: fixed;
