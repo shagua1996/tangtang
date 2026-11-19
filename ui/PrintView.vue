@@ -53,7 +53,7 @@ onMounted(async () => {
     const style = document.createElement('style')
     style.textContent =
       kind === 'label'
-        ? '@page { size: auto; margin: 2mm }'
+        ? '@page { size: 60mm 60mm; margin: 1mm }'
         : '@page { size: A4 portrait; margin: 10mm }'
     document.head.appendChild(style)
     await nextTick()
@@ -69,10 +69,10 @@ onMounted(async () => {
 })
 </script>
 <template>
-  <main class="print-document">
+  <main class="print-document" :class="{ 'label-print-document': kind === 'label' }">
     <p v-if="failure">{{ failure }}</p>
     <template v-if="order">
-      <LabelDocument v-if="kind === 'label'" :order="order" :item="rows[0]" />
+      <LabelDocument v-if="kind === 'label'" :order="order" :item="rows[0]" print-layout />
       <template v-else
         ><section
           v-for="(sheet, index) in sheets"
@@ -90,3 +90,6 @@ onMounted(async () => {
     </template>
   </main>
 </template>
+<style scoped>
+.print-document.label-print-document { width: 58mm; padding: 0; margin: 0; }
+</style>

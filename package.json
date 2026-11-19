@@ -1,6 +1,6 @@
 {
   "name": "PengYueJuPlus",
-  "version": "3.0.0",
+  "version": "3.0.2",
   "private": true,
   "description": "芃悦居铝木门",
   "author": "dingshirong",
@@ -16,7 +16,7 @@
     "benchmark": "node tools/electron-node.cjs tools/benchmark.cjs",
     "typecheck": "vue-tsc --noEmit",
     "postinstall": "node tools/prepare-native.cjs",
-    "test:e2e": "npm run build && node tests/electron.cjs && node tests/history-batch-delete.cjs && node tests/history-labels.cjs && node tests/history-sale.cjs && node tests/recent-inputs-ui.cjs && node tests/stale-preload.cjs && node tests/stale-preload.cjs --old-main && node tests/requirements-ui.cjs && node tests/startup.cjs && node tests/documents.cjs && node tests/large-order.cjs && node tests/print.cjs && node tests/customers-ui.cjs"
+    "test:e2e": "npm run build && node tests/electron.cjs && node tests/history-batch-delete.cjs && node tests/history-labels.cjs && node tests/history-sale.cjs && node tests/recent-inputs-ui.cjs && node tests/stale-preload.cjs && node tests/stale-preload.cjs --old-main && node tests/requirements-ui.cjs && node tests/startup.cjs && node tests/documents.cjs && node tests/large-order.cjs && node tests/print.cjs && node tests/customers-ui.cjs && node tests/label-print-layout.cjs"
   },
   "dependencies": {
     "better-sqlite3": "8.7.0",

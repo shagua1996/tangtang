@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { displayDirection } from './fields'
-const props = defineProps<{ order: any; item: any }>()
+const props = defineProps<{ order: any; item: any; printLayout?: boolean }>()
 const fields = computed(() => [
   ['客户名称', props.order.orderForm.clientName],
   ['客户地址', props.order.orderForm.clientAddress],
@@ -14,9 +14,9 @@ const fields = computed(() => [
 ])
 </script>
 <template>
-  <div class="document-label">
-    <div v-for="[label, value] in fields" :key="label" class="document-label-row">
-      <span class="document-label-name">{{ label }}：</span><strong>{{ value }}</strong>
+  <div class="document-label" :class="{ 'label-print-layout': printLayout }">
+    <div v-for="[label, value] in fields" :key="label" class="document-label-row" :data-field="label">
+      <span class="document-label-name">{{ label }}{{ printLayout ? ':' : '：' }}</span><strong>{{ value }}</strong>
     </div>
   </div>
 </template>
@@ -27,7 +27,7 @@ const fields = computed(() => [
   padding: 6px;
   color: #606266;
   background: white;
-  font-size: 14px;
+  font-size: 16px;
 }
 .document-label-row {
   margin-bottom: 2px;
@@ -45,10 +45,36 @@ const fields = computed(() => [
 .document-label strong {
   font-weight: 600;
 }
+/* Print-only sizing; screen cards retain their existing typography. */
+.document-label.label-print-layout {
+  width: 58mm;
+  border: 0;
+  padding: 0;
+  color: #000;
+  font-size: 19px;
+}
+.label-print-layout .document-label-row {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  line-height: 24px;
+  margin-bottom: 1px;
+}
+.label-print-layout .document-label-row:last-child { margin-bottom: 0; }
+.label-print-layout .document-label-name {
+  width: 4.5em;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.label-print-layout strong { min-width: 0; flex: 1; }
+.label-print-layout [data-field="洞口尺寸"] strong,
+.label-print-layout [data-field="门板尺寸"] strong {
+  font-family: Arial, 'Microsoft YaHei', sans-serif;
+}
 @media print {
   .document-label {
     color: #000;
-    font-size: 14px;
+    font-size: 16px;
   }
 }
 </style>

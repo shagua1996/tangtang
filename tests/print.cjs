@@ -111,7 +111,8 @@ async function main() {
   assert.equal(proof[1].lastRow, true)
   assert.equal(proof[2].rows, 0)
   assert.ok(proof.every((p) => p.bytes > 1000))
-  assert.equal(proof[2].options.pageSize, undefined)
+  assert.deepEqual(proof[2].options.pageSize, { width: 60000, height: 60000 })
+  assert.equal(proof[2].options.scaleFactor, 100)
   assert.equal(
     await app.evaluate(
       ({ BrowserWindow }) => BrowserWindow.getAllWindows().length,

@@ -78,7 +78,7 @@ async function main() {
     assert.equal(proof.itemIndex, String(index))
     assert.equal(proof.cards, 1)
     assert.deepEqual(proof.fields, await cards.nth(index).locator('strong').allTextContents())
-    assert.equal(proof.options.pageSize, undefined)
+    assert.deepEqual(proof.options.pageSize, { width: 60000, height: 60000 })
     for (const button of await detail.getByRole('button', { name: '打印', exact: true }).all())
       await expect(button).toBeDisabled()
     await app.evaluate((_electron, attempt) => {

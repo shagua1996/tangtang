@@ -185,6 +185,11 @@ ipcMain.on('tangtang:printReady', (event) => {
     margins: { marginType: 'none' },
   }
   if (job.request.kind !== 'label') options.pageSize = 'A4'
+  else {
+    // Native print uses microns; printToPDF uses inches instead.
+    options.pageSize = { width: 60000, height: 60000 }
+    options.scaleFactor = 100
+  }
   job.win.webContents.print(options, (success, reason) =>
     job.finish(success ? null : new Error(reason || '打印已取消')),
   )

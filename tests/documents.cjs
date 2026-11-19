@@ -17,7 +17,7 @@ const seed = spawnSync(require('electron'), ['tests/seed.cjs', data], {
 assert.equal(seed.status, 0, seed.stderr)
 function tableSignature() {
   const label = [...document.querySelectorAll('.document-label')].find(element => element.getBoundingClientRect().width > 0)
-  if (label) return [[...label.querySelectorAll('.document-label-row')].map(row => [...row.children].map(element => ({text:element.textContent.replace(/\s+/g,''),colspan:1,rowspan:1}))) ]
+  if (label) return [[...label.querySelectorAll('.document-label-row')].map(row => [...row.children].map((element, index) => ({text:element.textContent.replace(/\s+/g,'').replace(index === 0 ? /：/g : /$^/g, ':'),colspan:1,rowspan:1}))) ]
   const tables = [
     ...document.querySelectorAll('.order-view table,.print-document table'),
   ].filter((t) => t.getBoundingClientRect().width > 0)
