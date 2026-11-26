@@ -47,6 +47,8 @@ const settings = ref<any>(clone(DEFAULT_SETTING)),
   dictionaryInput = ref<any>({}),
   history = ref<any>(null)
 const historyOpened = ref(false)
+const calculatorForm = ref<{ $el: HTMLFormElement }>()
+const settingsForm = ref<{ $el: HTMLFormElement }>()
 let orderIndex: string | number = 1
 const pageNames: any = {
   calculate: '尺寸计算',
@@ -128,6 +130,7 @@ async function run(work: () => Promise<void>) {
   }
 }
 function calculateNow() {
+  if (calculatorForm.value && !calculatorForm.value.$el.reportValidity()) return
   if (
     dimensionFields.some(
       ([key]) =>
@@ -203,6 +206,9 @@ function print(kind: string, itemIndex?: number) {
   })
 }
 async function persistSettings(candidate: any) {
+  if (settingsForm.value && !settingsForm.value.$el.reportValidity()) {
+    throw new Error('尺寸计算参数请输入有效数字')
+  }
   const snapshot = clone(candidate)
   const stored = await window.tangtang.saveSettings(snapshot)
   settings.value = clone(stored)
@@ -335,6 +341,7 @@ onMounted(init)
                 <span class="unit-badge">单位 mm</span>
               </div>
               <el-form
+                ref="calculatorForm"
                 label-position="top"
                 class="calculator-form"
                 @submit.prevent="calculateNow"
@@ -346,6 +353,7 @@ onMounted(init)
                   ><el-input
                     v-model="hole[key]"
                     type="number"
+                    step="any"
                     :placeholder="key === 'doorWidth' ? undefined : '0'"
                     ><template #suffix>mm</template></el-input
                   ></el-form-item
@@ -391,15 +399,14 @@ onMounted(init)
                       :value="value" /></el-select></el-form-item
                 ><el-form-item label="数量"
                   ><el-input
-                    v-model="hole.number"
-                    type="number" /></el-form-item
+                    v-model="hole.number" /></el-form-item
                 ><el-form-item label="单位"
                   ><el-select v-model="hole.unit" placeholder="选择单位"
                     ><el-option label="套" value="套" /><el-option
                       label="米"
                       value="米" /></el-select></el-form-item
                 ><el-form-item label="单价"
-                  ><el-input v-model="hole.price" type="number"
+                  ><el-input v-model="hole.price" type="number" step="any"
                     ><template #prefix>¥</template></el-input
                   ></el-form-item
                 ><el-form-item class="note-field" label="备注"
@@ -499,12 +506,12 @@ onMounted(init)
               <h2>尺寸计算参数</h2>
               <span class="unit-badge">单位 mm</span>
             </div>
-            <el-form class="settings-grid" label-position="top" :disabled="busy"
+            <el-form ref="settingsForm" class="settings-grid" label-position="top" :disabled="busy"
               ><el-form-item
                 v-for="[key, label] in settingFields"
                 :key="key"
                 :label="label"
-                ><el-input v-model="draft.baseForm[key]" type="number"
+                ><el-input v-model="draft.baseForm[key]" type="number" step="any"
                   ><template #suffix>mm</template></el-input
                 ></el-form-item
               ></el-form
